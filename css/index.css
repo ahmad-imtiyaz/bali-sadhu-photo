@@ -1,9 +1,8 @@
 /* ============================================
    BALI SADHU PHOTO — index.css
-   Phase 1: Pick Image
+   v2 — Responsive: Desktop + iPad + Mobile
    ============================================ */
 
-/* === CSS VARIABLES === */
 :root {
   --gold:          #C8922A;
   --gold-light:    #E8B84B;
@@ -24,23 +23,21 @@
   --radius-sm:     8px;
 }
 
-/* === RESET === */
 *, *::before, *::after {
   margin: 0;
   padding: 0;
   box-sizing: border-box;
 }
 
-/* === BASE === */
 body {
   font-family: 'DM Sans', sans-serif;
   background: var(--cream);
   color: var(--text-main);
   min-height: 100vh;
   overflow-x: hidden;
+  /* PENTING: hilangkan overflow:hidden agar mobile bisa scroll */
 }
 
-/* === BACKGROUND GRADIENT === */
 body::before {
   content: '';
   position: fixed;
@@ -52,65 +49,45 @@ body::before {
   z-index: 0;
 }
 
-/* ============================================
-   ORNAMEN BALI
-   ============================================ */
+/* === ORNAMEN === */
 .bali-ornament {
   position: fixed;
   pointer-events: none;
   z-index: 0;
   opacity: 0.06;
 }
+.bali-ornament.top-right { top: -40px; right: -40px; width: 300px; height: 300px; }
+.bali-ornament.bottom-left { bottom: -40px; left: -40px; width: 250px; height: 250px; }
 
-.bali-ornament.top-right {
-  top: -40px;
-  right: -40px;
-  width: 300px;
-  height: 300px;
-}
-
-.bali-ornament.bottom-left {
-  bottom: -40px;
-  left: -40px;
-  width: 250px;
-  height: 250px;
-}
-
-/* ============================================
-   TOPBAR
-   ============================================ */
+/* === TOPBAR === */
 .topbar {
   position: relative;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 40px;
+  padding: 14px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(250, 246, 238, 0.9);
+  background: rgba(250, 246, 238, 0.95);
   backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  gap: 12px;
 }
 
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
-.logo-icon {
-  width: 40px;
-  height: 40px;
-}
+.logo-icon { width: 36px; height: 36px; }
 
-.logo-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1;
-}
+.logo-text { display: flex; flex-direction: column; line-height: 1; }
 
 .logo-main {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 600;
   color: var(--gold-dark);
   letter-spacing: 0.02em;
@@ -118,11 +95,10 @@ body::before {
 
 .logo-sub {
   font-size: 10px;
-  font-weight: 400;
   color: var(--text-muted);
-  letter-spacing: 0.15em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  margin-top: 3px;
+  margin-top: 2px;
 }
 
 .topbar-badge {
@@ -132,52 +108,53 @@ body::before {
   background: var(--green-pale);
   border: 1px solid rgba(45, 106, 79, 0.2);
   border-radius: 20px;
-  padding: 4px 12px;
-  letter-spacing: 0.05em;
+  padding: 4px 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
-/* ============================================
-   STEP NAVIGATION
-   ============================================ */
+/* === STEP NAV === */
 .step-nav {
   position: relative;
   z-index: 10;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 0 40px;
+  padding: 0 16px;
   background: rgba(250, 246, 238, 0.7);
   border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.step-nav::-webkit-scrollbar { display: none; }
 
 .step-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 14px 24px;
+  gap: 6px;
+  padding: 12px 16px;
   cursor: pointer;
   transition: all 0.2s;
   position: relative;
   opacity: 0.45;
+  flex-shrink: 0;
 }
-
 .step-item.active  { opacity: 1; }
-.step-item.done    { opacity: 0.7; cursor: pointer; }
+.step-item.done    { opacity: 0.7; }
 
 .step-item.active::after {
   content: '';
   position: absolute;
   bottom: -1px;
-  left: 0;
-  right: 0;
+  left: 0; right: 0;
   height: 2px;
   background: var(--gold);
   border-radius: 2px 2px 0 0;
 }
 
 .step-num {
-  width: 24px;
-  height: 24px;
+  width: 22px; height: 22px;
   border-radius: 50%;
   font-size: 11px;
   font-weight: 500;
@@ -189,41 +166,33 @@ body::before {
   transition: all 0.2s;
   flex-shrink: 0;
 }
-
-.step-item.active .step-num { background: var(--gold);  color: white; }
+.step-item.active .step-num { background: var(--gold); color: white; }
 .step-item.done   .step-num { background: var(--green); color: white; }
-
-.step-item.done .step-num::before {
-  content: '✓';
-  font-size: 12px;
-}
-
+.step-item.done .step-num::before { content: '✓'; font-size: 11px; }
 .step-item.done .step-num-inner { display: none; }
 
 .step-label {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 500;
   color: var(--text-main);
   white-space: nowrap;
 }
 
 .step-divider {
-  width: 32px;
+  width: 24px;
   height: 1px;
   background: var(--border);
   flex-shrink: 0;
 }
 
-/* ============================================
-   MAIN LAYOUT
-   ============================================ */
+/* === MAIN LAYOUT === */
 .main {
   position: relative;
   z-index: 1;
   display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
-  padding: 32px 40px;
+  grid-template-columns: 1fr 300px;
+  gap: 20px;
+  padding: 24px 24px;
   min-height: calc(100vh - 120px);
 }
 
@@ -233,9 +202,7 @@ body::before {
   gap: 16px;
 }
 
-/* ============================================
-   UPLOAD ZONE
-   ============================================ */
+/* === UPLOAD ZONE === */
 .upload-zone {
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius);
@@ -244,15 +211,16 @@ body::before {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 20px;
-  padding: 60px 40px;
+  gap: 16px;
+  padding: 48px 32px;
   cursor: pointer;
   transition: all 0.25s;
   position: relative;
   overflow: hidden;
+  /* min-height agar tetap besar di semua device */
+  min-height: 300px;
 }
 
-/* Pattern ornamen di upload zone */
 .upload-zone::before {
   content: '';
   position: absolute;
@@ -266,15 +234,13 @@ body::before {
 .upload-zone.drag-over {
   border-color: var(--gold);
   background: rgba(200, 146, 42, 0.06);
-  transform: scale(1.005);
 }
 
 .upload-zone.hidden { display: none; }
 
 .upload-icon-wrap {
-  width: 88px;
-  height: 88px;
-  border-radius: 20px;
+  width: 80px; height: 80px;
+  border-radius: 18px;
   background: white;
   border: 1px solid var(--border);
   display: flex;
@@ -285,7 +251,7 @@ body::before {
 
 .upload-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 26px;
+  font-size: 24px;
   font-weight: 600;
   color: var(--text-main);
   text-align: center;
@@ -296,7 +262,7 @@ body::before {
   color: var(--text-muted);
   text-align: center;
   line-height: 1.6;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .upload-formats {
@@ -314,7 +280,6 @@ body::before {
   background: var(--gold-pale);
   color: var(--gold-dark);
   border: 1px solid rgba(200, 146, 42, 0.2);
-  letter-spacing: 0.05em;
 }
 
 .upload-hint {
@@ -322,14 +287,12 @@ body::before {
   color: var(--text-muted);
 }
 
-/* ============================================
-   BUTTONS
-   ============================================ */
+/* === BUTTONS === */
 .btn-browse {
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 12px 28px;
+  padding: 13px 28px;
   background: var(--gold);
   color: white;
   border: none;
@@ -339,20 +302,20 @@ body::before {
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s;
-  letter-spacing: 0.02em;
+  /* Penting untuk touch: area yang cukup besar */
+  min-height: 48px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-
-.btn-browse:hover {
-  background: var(--gold-dark);
-  transform: translateY(-1px);
-}
+.btn-browse:hover { background: var(--gold-dark); }
+.btn-browse:active { transform: scale(0.97); }
 
 .btn-next {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  padding: 13px 32px;
+  padding: 14px 32px;
   background: var(--gold);
   color: white;
   border: none;
@@ -363,12 +326,12 @@ body::before {
   cursor: pointer;
   transition: all 0.2s;
   width: 100%;
+  min-height: 52px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
-
-.btn-next:hover {
-  background: var(--gold-dark);
-  transform: translateY(-1px);
-}
+.btn-next:hover { background: var(--gold-dark); }
+.btn-next:active { transform: scale(0.97); }
 
 .btn-reupload {
   font-size: 12px;
@@ -378,42 +341,66 @@ body::before {
   cursor: pointer;
   text-decoration: underline;
   font-family: 'DM Sans', sans-serif;
+  min-height: 40px;
+  padding: 8px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* ============================================
-   PREVIEW PANEL
-   ============================================ */
+/* === PREVIEW PANEL === */
 .preview-panel {
   display: none;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 20px;
-  padding: 32px;
+  padding: 32px 24px;
   border: 1.5px solid var(--border);
   border-radius: var(--radius);
   background: white;
 }
-
 .preview-panel.visible { display: flex; }
 
 .preview-img {
   max-width: 100%;
-  max-height: 400px;
+  max-height: 380px;
   border-radius: 10px;
   object-fit: contain;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
 }
 
 .preview-name {
-  font-size: 13px;
+  font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+  word-break: break-all;
 }
 
-/* ============================================
-   SIDEBAR
-   ============================================ */
+/* === CUSTOM TOAST (ganti alert) === */
+.bsp-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--dark-mid);
+  color: var(--gold-pale);
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 9999;
+  opacity: 0;
+  transition: all 0.3s ease;
+  pointer-events: none;
+  white-space: nowrap;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.bsp-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* === SIDEBAR === */
 .sidebar {
   display: flex;
   flex-direction: column;
@@ -424,33 +411,31 @@ body::before {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: white;
-  padding: 20px;
+  padding: 18px;
 }
 
 .sidebar-title {
   font-family: 'Cormorant Garamond', serif;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text-main);
-  margin-bottom: 14px;
+  margin-bottom: 12px;
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-/* === Recent Empty === */
 .recent-empty {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   gap: 10px;
-  padding: 40px 0;
+  padding: 32px 0;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-/* === Recent Grid === */
 .recent-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -466,27 +451,19 @@ body::before {
   transition: all 0.15s;
   position: relative;
   background: var(--cream);
+  touch-action: manipulation;
 }
+.recent-item:hover { border-color: var(--gold); }
+.recent-item:active { transform: scale(0.97); }
 
-.recent-item:hover {
-  border-color: var(--gold);
-  transform: scale(1.02);
-}
-
-.recent-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
+.recent-item img { width: 100%; height: 100%; object-fit: cover; }
 
 .recent-item-del {
   position: absolute;
-  top: 4px;
-  right: 4px;
-  width: 20px;
-  height: 20px;
+  top: 4px; right: 4px;
+  width: 22px; height: 22px;
   border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.55);
   color: white;
   font-size: 10px;
   display: none;
@@ -495,35 +472,29 @@ body::before {
   cursor: pointer;
   border: none;
 }
-
 .recent-item:hover .recent-item-del { display: flex; }
 
-/* ============================================
-   INFO CARD (Alur Kerja)
-   ============================================ */
+/* === INFO & TIPS CARDS === */
 .info-card {
   border: 1px solid rgba(45, 106, 79, 0.2);
   border-radius: var(--radius-sm);
   background: var(--green-pale);
   padding: 14px 16px;
 }
-
 .info-card-title {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 500;
   color: var(--green-dark);
   margin-bottom: 8px;
   letter-spacing: 0.05em;
   text-transform: uppercase;
 }
-
 .info-card-steps {
   list-style: none;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
-
 .info-card-steps li {
   font-size: 12px;
   color: var(--green);
@@ -531,26 +502,20 @@ body::before {
   align-items: center;
   gap: 8px;
 }
-
 .info-card-steps li::before {
   content: '';
-  width: 5px;
-  height: 5px;
+  width: 5px; height: 5px;
   border-radius: 50%;
   background: var(--green-light);
   flex-shrink: 0;
 }
 
-/* ============================================
-   TIPS CARD
-   ============================================ */
 .tips-card {
   border: 1px solid rgba(200, 146, 42, 0.2);
   border-radius: var(--radius);
   background: var(--gold-pale);
-  padding: 16px;
+  padding: 14px 16px;
 }
-
 .tips-card-title {
   font-size: 11px;
   font-weight: 500;
@@ -559,14 +524,98 @@ body::before {
   text-transform: uppercase;
   margin-bottom: 8px;
 }
-
 .tips-card-body {
   font-size: 12px;
   color: var(--gold-dark);
   line-height: 1.7;
 }
 
-/* ============================================
-   HIDDEN FILE INPUT
-   ============================================ */
 #fileInput { display: none; }
+
+/* ============================================
+   RESPONSIVE — iPad (768px - 1024px)
+   ============================================ */
+@media (max-width: 1024px) {
+  .main {
+    grid-template-columns: 1fr 260px;
+    padding: 20px 20px;
+    gap: 16px;
+  }
+  .topbar { padding: 12px 20px; }
+}
+
+/* ============================================
+   RESPONSIVE — Mobile (<= 768px)
+   Sidebar pindah ke bawah, layout 1 kolom
+   ============================================ */
+@media (max-width: 768px) {
+  .topbar {
+    padding: 12px 16px;
+  }
+
+  .logo-sub { display: none; }
+
+  .topbar-badge {
+    font-size: 10px;
+    padding: 3px 8px;
+  }
+
+  /* Step nav: label pendek */
+  .step-item { padding: 10px 10px; }
+  .step-label { font-size: 11px; }
+
+  /* Layout jadi 1 kolom, sidebar turun ke bawah */
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto;
+    padding: 16px;
+    gap: 16px;
+    min-height: unset;
+  }
+
+  .sidebar {
+    order: 2; /* sidebar ada di bawah */
+  }
+
+  .left-panel {
+    order: 1;
+  }
+
+  .upload-zone {
+    padding: 36px 20px;
+    gap: 14px;
+    min-height: 260px;
+  }
+
+  .upload-title { font-size: 20px; }
+  .upload-icon-wrap { width: 68px; height: 68px; }
+
+  /* Sembunyikan ornamen Bali di mobile agar ga ganggu */
+  .bali-ornament { display: none; }
+}
+
+/* ============================================
+   RESPONSIVE — Small Mobile (<= 480px)
+   ============================================ */
+@media (max-width: 480px) {
+  .topbar { padding: 10px 14px; }
+  .logo-main { font-size: 16px; }
+  .logo-icon { width: 30px; height: 30px; }
+
+  .step-label { display: none; }
+  .step-item { padding: 10px 8px; }
+
+  .main { padding: 12px; gap: 12px; }
+
+  .upload-zone {
+    padding: 28px 16px;
+    min-height: 220px;
+  }
+
+  .upload-title { font-size: 18px; }
+
+  .btn-browse { font-size: 13px; padding: 12px 24px; }
+  .btn-next { font-size: 13px; }
+
+  .sidebar-card { padding: 14px; }
+}
