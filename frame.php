@@ -63,18 +63,12 @@
   <div class="canvas-area">
     <div class="canvas-stage" id="canvasStage">
 
-      <!-- Loading -->
       <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
       </div>
 
-      <!-- The composited result -->
       <div class="composite-wrap" id="compositeWrap" style="display:none;">
-        <!-- Photo base canvas -->
         <canvas id="photoCanvas"></canvas>
-
-        <!-- Frame overlays injected here by JS -->
-        <!-- Each frame = absolutely positioned img -->
       </div>
 
     </div>
@@ -91,7 +85,6 @@
         </button>
         <button class="tool-btn" id="btnZoomFit">Fit</button>
       </div>
-
 
       <div class="toolbar-right">
         <button class="tool-btn" id="btnDownload">
@@ -123,6 +116,21 @@
     <!-- ── TAB: FRAMES ── -->
     <div class="tab-content active" id="tab-frames">
 
+      <!-- Upload Zone — prominent, at top -->
+      <div class="upload-zone" id="uploadZone">
+        <div class="upload-zone-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+            <path d="M12 4v12M7 9l5-5 5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M4 18h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <span class="upload-zone-title">Upload Frame PNG</span>
+        <span class="upload-zone-sub">Seret &amp; lepas file ke sini, atau klik tombol di bawah</span>
+        <span class="upload-zone-hint">Format: PNG transparan · Maks 8MB per file · Bisa multi-file</span>
+        <span class="upload-zone-btn">Pilih File</span>
+        <input type="file" id="frameFileInput" accept="image/png" hidden multiple>
+      </div>
+
       <!-- Orientation filter -->
       <div class="orient-filter">
         <button class="orient-btn active" data-orient="all">Semua</button>
@@ -139,20 +147,10 @@
 
       <!-- Gallery -->
       <div>
-        <div class="section-label" style="margin-bottom:8px;">Galeri Frame</div>
+        <div class="section-label" style="margin-bottom:10px;">Galeri Frame</div>
         <div class="frames-grid" id="framesGrid">
           <!-- populated by JS -->
         </div>
-      </div>
-
-      <!-- Upload -->
-      <div class="upload-zone" id="uploadZone">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M11 4v10M7 8l4-4 4 4M4 17h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>Upload Frame PNG</span>
-        <span class="upload-zone-hint">PNG transparan · max 5MB · portrait atau landscape</span>
-        <input type="file" id="frameFileInput" accept="image/png" hidden multiple>
       </div>
 
     </div>
@@ -162,12 +160,11 @@
 
       <div id="adjustNoFrame" class="no-frame-state">
         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4"><rect x="3" y="3" width="22" height="22" rx="3" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="7" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1"/></svg>
-        <span>Pilih frame dulu dari tab Frames</span>
+        <span>Pilih frame dulu dari tab <strong style="color:var(--gold)">Frames</strong></span>
       </div>
 
       <div id="adjustPanel" style="display:none; flex-direction:column; gap:14px;">
 
-        <!-- Opacity -->
         <div class="adjust-block">
           <div class="adjust-block-title">Opasitas Frame</div>
           <div class="slider-group">
@@ -179,7 +176,6 @@
           </div>
         </div>
 
-        <!-- Scale -->
         <div class="adjust-block">
           <div class="adjust-block-title">Ukuran Frame</div>
           <div class="slider-group">
@@ -191,7 +187,6 @@
           </div>
         </div>
 
-        <!-- Position presets -->
         <div class="adjust-block">
           <div class="adjust-block-title" style="margin-bottom:8px;">Posisi Frame</div>
           <div class="pos-grid">
@@ -205,13 +200,12 @@
             <button class="pos-btn" data-pos="left-center" title="Kiri Tengah">←</button>
             <button class="pos-btn" data-pos="right-center" title="Kanan Tengah">→</button>
           </div>
-          <div style="font-size:10px;color:var(--text-dim);margin-top:8px;">
+          <div style="font-size:12px;color:var(--text-dim);margin-top:10px;">
             💡 Atau drag frame langsung di canvas
           </div>
         </div>
 
-        <!-- Reset -->
-        <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi & Ukuran</button>
+        <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi &amp; Ukuran</button>
 
       </div>
     </div>
@@ -220,14 +214,12 @@
     <div class="tab-content" id="tab-background">
 
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Background Foto</div>
-        <div class="bg-swatches" id="bgSwatches">
-          <!-- populated by JS -->
-        </div>
+        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Background Foto</div>
+        <div class="bg-swatches" id="bgSwatches"></div>
       </div>
 
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Kustom</div>
+        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Kustom</div>
         <div class="bg-custom-row">
           <span class="bg-custom-label">Pilih warna bebas</span>
           <input type="color" id="bgColorPicker" value="#ffffff">
@@ -235,7 +227,7 @@
       </div>
 
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:8px;">Padding Canvas</div>
+        <div class="adjust-block-title" style="margin-bottom:10px;">Padding Canvas</div>
         <div class="slider-group">
           <div class="slider-label-row">
             <span class="slider-label">Jarak tepi foto</span>
@@ -250,13 +242,13 @@
   </div><!-- /right-panel -->
 </div><!-- /frame-layout -->
 
-<input type="file" id="frameFileInput" accept="image/png" hidden multiple>
 <div id="toast"></div>
+
 <!-- BOTTOM SHEET — Mobile only -->
 <div class="frame-bottom-sheet" id="frameBottomSheet" style="display:none;">
   <div class="fbs-handle" id="fbsHandle">
     <div class="fbs-tab-row">
-         <button class="fbs-mode-btn" id="btnTouchMode" disabled>🔍 Pan</button>
+      <button class="fbs-mode-btn" id="btnTouchMode" disabled>🔍 Pan</button>
       <button class="fbs-tab-btn active" data-fbs="frames">Frames</button>
       <button class="fbs-tab-btn" data-fbs="adjust">Adjust</button>
       <button class="fbs-tab-btn" data-fbs="background">Background</button>
@@ -266,24 +258,33 @@
 
     <!-- PANEL: Frames -->
     <div class="fbs-panel active" id="fbs-frames">
+
+      <!-- Upload Zone Mobile -->
+      <div class="upload-zone" id="fbsUploadZone">
+        <div class="upload-zone-icon">
+          <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+            <path d="M11 4v10M7 8l4-4 4 4M4 17h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <span class="upload-zone-title">Upload Frame PNG</span>
+        <span class="upload-zone-hint">PNG transparan · Maks 8MB · Multi-file</span>
+        <span class="upload-zone-btn">Pilih File</span>
+        <input type="file" id="fbsFrameFileInput" accept="image/png" hidden multiple>
+      </div>
+
       <div class="orient-filter">
         <button class="orient-btn active" data-orient="all">Semua</button>
         <button class="orient-btn" data-orient="portrait">Portrait</button>
         <button class="orient-btn" data-orient="landscape">Landscape</button>
       </div>
+
       <div class="active-frame-info" id="fbsActiveFrameInfo" style="display:none;">
         <span class="active-frame-info-name" id="fbsActiveFrameInfoName">—</span>
         <button class="btn-remove-frame" onclick="removeActiveFrame()">Hapus</button>
       </div>
+
+      <div class="section-label">Galeri Frame</div>
       <div class="frames-grid" id="fbsFramesGrid"></div>
-      <div class="upload-zone" id="fbsUploadZone">
-        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
-          <path d="M11 4v10M7 8l4-4 4 4M4 17h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-        </svg>
-        <span>Upload Frame PNG</span>
-        <span class="upload-zone-hint">PNG transparan · max 8MB</span>
-        <input type="file" id="fbsFrameFileInput" accept="image/png" hidden multiple>
-      </div>
     </div>
 
     <!-- PANEL: Adjust -->
@@ -312,20 +313,20 @@
         </div>
         <input type="range" id="fbsSlRotate" min="-180" max="180" value="0">
         <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="tool-btn" id="fbsBtnRotL" style="flex:1;font-size:16px;min-height:44px;">↺</button>
-          <button class="tool-btn" id="fbsBtnRotR" style="flex:1;font-size:16px;min-height:44px;">↻</button>
-          <button class="tool-btn" id="fbsBtnRotReset" style="flex:1;font-size:11px;min-height:44px;">Reset</button>
+          <button class="tool-btn" id="fbsBtnRotL" style="flex:1;font-size:18px;min-height:46px;">↺</button>
+          <button class="tool-btn" id="fbsBtnRotR" style="flex:1;font-size:18px;min-height:46px;">↻</button>
+          <button class="tool-btn" id="fbsBtnRotReset" style="flex:1;font-size:12px;min-height:46px;">Reset</button>
         </div>
       </div>
       <div class="adjust-block">
         <div class="adjust-block-title">Cermin (Flip)</div>
         <div style="display:flex;gap:6px;margin-top:4px;">
-          <button class="tool-btn" id="fbsBtnFlipH" style="flex:1;min-height:44px;font-size:11px;">⇔ Flip H</button>
-          <button class="tool-btn" id="fbsBtnFlipV" style="flex:1;min-height:44px;font-size:11px;">⇕ Flip V</button>
+          <button class="tool-btn" id="fbsBtnFlipH" style="flex:1;min-height:46px;font-size:13px;">⇔ Flip H</button>
+          <button class="tool-btn" id="fbsBtnFlipV" style="flex:1;min-height:46px;font-size:13px;">⇕ Flip V</button>
         </div>
       </div>
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:8px;">Posisi Frame</div>
+        <div class="adjust-block-title" style="margin-bottom:10px;">Posisi Frame</div>
         <div class="pos-grid">
           <button class="pos-btn" data-pos="top-left">↖</button>
           <button class="pos-btn" data-pos="top-center">↑</button>
@@ -338,24 +339,24 @@
           <button class="pos-btn" data-pos="right-center">→</button>
         </div>
       </div>
-      <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi & Ukuran</button>
+      <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi &amp; Ukuran</button>
     </div>
 
     <!-- PANEL: Background -->
     <div class="fbs-panel" id="fbs-background">
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Background</div>
+        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Background</div>
         <div class="bg-swatches" id="fbsBgSwatches"></div>
       </div>
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Kustom</div>
+        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Kustom</div>
         <div class="bg-custom-row">
           <span class="bg-custom-label">Pilih warna bebas</span>
           <input type="color" id="fbsBgColorPicker" value="#ffffff">
         </div>
       </div>
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:8px;">Padding Canvas</div>
+        <div class="adjust-block-title" style="margin-bottom:10px;">Padding Canvas</div>
         <div class="slider-label-row">
           <span class="slider-label">Jarak tepi</span>
           <span class="slider-val" id="fbsValPadding">0px</span>
@@ -367,8 +368,7 @@
   </div>
 </div>
 
-
-  <script src="js/frame.js"></script>
+<script src="js/frame.js"></script>
 
 </body>
 </html>

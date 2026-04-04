@@ -1,8 +1,8 @@
 /* ============================================================
    print.js — Bali Sadhu Photo
-   v5.0 — CSP-safe (no inline onclick), direct wa.me flow,
-          share sheet as fallback only
-============================================================ */
+   v5.1 — FIX: loadFinalPhoto() baca dari server path (bsp_framedPath / bsp_editedPath)
+               bukan dari base64 sessionStorage yang crash untuk foto besar
+   ============================================================ */
 
 const PS = {
   src: null, imgEl: null, width: 0, height: 0,
@@ -104,19 +104,32 @@ function selectFmt(btn, fmt) {
 function doDownload() {
   if (!PS.imgEl) { showToast('❌ Foto belum siap'); return; }
   showToast('⏳ Menyiapkan download…');
-  const canvas = document.createElement('canvas');
-  canvas.width = PS.width; canvas.height = PS.height;
-  canvas.getContext('2d').drawImage(PS.imgEl, 0, 0);
+
   const quality  = parseInt(document.getElementById('slQuality')?.value || '92') / 100;
   const mimeMap  = { png: 'image/png', jpg: 'image/jpeg', webp: 'image/webp' };
   const mime     = mimeMap[PS.dlFormat] || 'image/png';
-  const dataUrl  = canvas.toDataURL(mime, quality);
   const name     = (sessionStorage.getItem('bsp_imageName') || 'balisadhu').replace(/\.[^.]+$/, '');
-  const link     = document.createElement('a');
-  link.download  = `${name}_final.${PS.dlFormat}`;
-  link.href      = dataUrl;
-  link.click();
-  showToast(`✓ Foto didownload sebagai ${PS.dlFormat.toUpperCase()}`);
+
+  // Untuk foto besar: pakai toBlob() bukan toDataURL() agar tidak OOM
+  const canvas = document.createElement('canvas');
+  canvas.width  = PS.width;
+  canvas.height = PS.height;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(PS.imgEl, 0, 0);
+
+  canvas.toBlob((blob) => {
+    if (!blob) { showToast('❌ Gagal membuat file download'); return; }
+    const url  = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.download = `${name}_final.${PS.dlFormat}`;
+    link.href     = url;
+    link.click();
+    // Bersihkan object URL setelah download
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    showToast(`✓ Foto didownload sebagai ${PS.dlFormat.toUpperCase()}`);
+  }, mime, quality);
 }
 
 // ─── WA FORMAT ───────────────────────────────────────────────
@@ -151,7 +164,6 @@ function selectContact(id) {
       <span class="badge-phone">+${escHtml(c.phone)}</span>
     </div>
     <button class="badge-clear" id="btnBadgeClear" title="Batal">✕</button>`;
-  // Re-attach event listener karena innerHTML baru
   document.getElementById('btnBadgeClear')?.addEventListener('click', clearSelectedContact);
   panel.style.display = 'flex';
   setTimeout(() => panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100);
@@ -200,7 +212,6 @@ function renderContacts(list) {
   const empty = document.getElementById('waContactsEmpty');
   if (!wrap) return;
 
-  // Hapus hanya item kontak, jangan hapus elemen empty
   wrap.querySelectorAll('.wa-contact-item').forEach(el => el.remove());
 
   if (!list.length) {
@@ -227,7 +238,6 @@ function renderContacts(list) {
         <button class="wa-icon-btn del-btn" title="Hapus">✕</button>
       </div>`;
 
-    // CSP-safe event listeners — tidak pakai onclick inline
     item.querySelector('.wa-contact-info').addEventListener('click', () => selectContact(c.id));
     item.querySelector('.fav-btn').addEventListener('click', (e) => { e.stopPropagation(); toggleFavorite(c.id); });
     item.querySelector('.del-btn').addEventListener('click', (e) => { e.stopPropagation(); deleteContact(c.id); });
@@ -246,8 +256,6 @@ async function loadContacts() {
     if (data.success) {
       PS.contacts = data.contacts || [];
       renderContacts(PS.contacts);
-    } else {
-      console.error('[loadContacts] error:', data.error);
     }
   } catch(err) { console.warn('[loadContacts] network error:', err.message); }
 }
@@ -263,7 +271,6 @@ async function updateContactUsage(phone, name) {
   } catch(err) {}
 }
 
-// ─── TAMBAH KONTAK ────────────────────────────────────────────
 async function doAddContact() {
   const rawPhone = document.getElementById('addPhone')?.value || '';
   const name     = document.getElementById('addName')?.value?.trim() || '';
@@ -293,26 +300,22 @@ async function doAddContact() {
     try { data = JSON.parse(text); }
     catch(parseErr) {
       console.error('[doAddContact] Non-JSON:', text.slice(0, 500));
-      showToast('❌ Server error. Buka DevTools → Network untuk detail.');
+      showToast('❌ Server error.');
       return;
     }
-
     if (data.success) {
       showToast(`✓ Kontak "${name || phone}" tersimpan!`);
-      const pEl = document.getElementById('addPhone');
-      const nEl = document.getElementById('addName');
-      if (pEl) pEl.value = '';
-      if (nEl) nEl.value = '';
+      document.getElementById('addPhone').value = '';
+      document.getElementById('addName').value  = '';
       await loadContacts();
       switchWaTab('contacts');
       const newContact = PS.contacts.find(c => c.phone === phone);
       if (newContact) selectContact(newContact.id);
     } else {
-      showToast('❌ ' + (data.error || 'Gagal simpan ke database'));
+      showToast('❌ ' + (data.error || 'Gagal simpan'));
     }
   } catch(err) {
-    console.error('[doAddContact] Network error:', err);
-    showToast('❌ Tidak bisa reach server. Pastikan PHP server berjalan.');
+    showToast('❌ Tidak bisa reach server.');
   } finally {
     if (btnSave) { btnSave.textContent = 'Simpan Kontak'; btnSave.disabled = false; }
   }
@@ -329,7 +332,6 @@ async function doSendWa() {
   const mime     = mimeMap[PS.waFormat] || 'image/png';
   const ext      = PS.waFormat;
 
-  // Render canvas → blob → File
   const canvas = document.createElement('canvas');
   canvas.width = PS.width; canvas.height = PS.height;
   canvas.getContext('2d').drawImage(PS.imgEl, 0, 0);
@@ -340,27 +342,19 @@ async function doSendWa() {
   const greeting = name ? `Halo ${name}! ` : 'Halo! ';
   const baseMsg  = `${greeting}Ini foto dari Bali Sadhu Photo 📸`;
 
-  // ── PRIORITAS 1: navigator.share — kirim file gambar langsung ──
   const canShare = navigator.canShare && navigator.canShare({ files: [file] });
   if (canShare) {
     try {
       showToast('📤 Membuka WhatsApp…');
-      await navigator.share({
-        files: [file],
-        title: 'Foto dari Bali Sadhu Photo',
-        text:  baseMsg,
-      });
+      await navigator.share({ files: [file], title: 'Foto dari Bali Sadhu Photo', text: baseMsg });
       await updateContactUsage(phone, name);
       showToast('✓ Foto berhasil dikirim!');
       return;
     } catch(err) {
       if (err.name === 'AbortError') { showToast('Dibatalkan'); return; }
-      // Jika share gagal karena alasan lain, lanjut ke fallback
-      console.warn('[share failed, fallback to wa.me]', err.message);
     }
   }
 
-  // ── PRIORITAS 2: Upload ke server → wa.me + link ──────────────
   showToast('⏳ Menyiapkan link foto…');
   let shareUrl = '';
   try {
@@ -369,58 +363,100 @@ async function doSendWa() {
     const res  = await fetch('api/wa_upload.php', { method: 'POST', body: fd });
     const data = await res.json();
     if (data.success) shareUrl = data.url;
-  } catch(err) {
-    console.warn('[WA upload failed]:', err.message);
-  }
+  } catch(err) { console.warn('[WA upload failed]:', err.message); }
 
   await updateContactUsage(phone, name);
-
   const msgText = shareUrl ? `${baseMsg}\n\n${shareUrl}` : baseMsg;
   const waUrl   = `https://wa.me/${phone}?text=${encodeURIComponent(msgText)}`;
-
   showToast('✓ Membuka WhatsApp…');
   window.open(waUrl, '_blank');
-
-  // Deteksi jika user kembali cepat (kemungkinan nomor tidak terdaftar)
-  const t = Date.now();
-  window.addEventListener('focus', function onFocus() {
-    window.removeEventListener('focus', onFocus);
-    if (Date.now() - t < 4000) {
-      showToast('⚠️ Nomor mungkin tidak terdaftar di WA. Coba nomor lain.', 5000);
-    }
-  });
 }
 
-// ─── LOAD FOTO FINAL ─────────────────────────────────────────
+// ─── LOAD FOTO FINAL — FIX FILE BESAR ────────────────────────
+/*
+ * PRIORITAS sumber gambar (dari yang paling diutamakan):
+ *
+ * 1. bsp_framedPath  → path server hasil frame.js goToPrint() upload   ← UTAMA
+ * 2. bsp_editedPath  → path server hasil edit.js goToFrame() upload    ← FALLBACK 1
+ * 3. bsp_serverPath  → path server foto original dari index.js         ← FALLBACK 2
+ * 4. bsp_framedSrc   → base64 lama (hanya ada jika foto kecil < 4MB)  ← FALLBACK 3
+ * 5. bsp_editedSrc   → base64 lama (hanya ada jika foto kecil < 4MB)  ← FALLBACK 4
+ * 6. bsp_imageSrc    → base64 original (hanya ada jika foto < 4MB)    ← FALLBACK 5
+ * 7. Tidak ada       → redirect ke index
+ *
+ * KENAPA base64 crash untuk file besar:
+ *   sessionStorage limit = 5-10MB
+ *   Foto 10-20MB → canvas.toDataURL() = string 30-60MB → QuotaExceededError
+ *   → sessionStorage.getItem() return null → foto tidak bisa load
+ */
 function loadFinalPhoto() {
-  const src = sessionStorage.getItem('bsp_framedSrc')
-           || sessionStorage.getItem('bsp_editedSrc')
-           || sessionStorage.getItem('bsp_imageSrc');
+  // Coba server path dulu (tidak ada limit ukuran)
+  const framedPath = sessionStorage.getItem('bsp_framedPath');
+  const editedPath = sessionStorage.getItem('bsp_editedPath');
+  const serverPath = sessionStorage.getItem('bsp_serverPath');
+
+  // Fallback base64 (hanya berhasil untuk foto kecil < 4MB)
+  const framedSrc  = sessionStorage.getItem('bsp_framedSrc');
+  const editedSrc  = sessionStorage.getItem('bsp_editedSrc');
+  const imageSrc   = sessionStorage.getItem('bsp_imageSrc');
+
+  // Pilih sumber terbaik
+  const src = framedPath || editedPath || serverPath || framedSrc || editedSrc || imageSrc;
+
   if (!src) {
     showToast('❌ Tidak ada foto. Kembali ke index…');
     setTimeout(() => { window.location.href = 'index.php'; }, 1500);
     return;
   }
+
+  // Simpan src ke PS untuk dipakai print/download/WA
   PS.src = src;
+
+  // Tampilkan loading state
+  const preview = document.getElementById('finalPreview');
+  const loading = document.getElementById('previewLoading');
+  if (preview) preview.style.display = 'none';
+  if (loading) loading.style.display = '';
+
   const img = new Image();
+
   img.onload = () => {
-    PS.imgEl = img; PS.width = img.naturalWidth; PS.height = img.naturalHeight;
-    const preview = document.getElementById('finalPreview');
-    const loading = document.getElementById('previewLoading');
-    const meta    = document.getElementById('previewMeta');
-    const sizeEl  = document.getElementById('metaSize');
+    PS.imgEl  = img;
+    PS.width  = img.naturalWidth;
+    PS.height = img.naturalHeight;
+
     if (preview) { preview.src = src; preview.style.display = ''; }
     if (loading) loading.style.display = 'none';
+
+    const meta   = document.getElementById('previewMeta');
+    const sizeEl = document.getElementById('metaSize');
     if (meta)    meta.style.display = '';
     if (sizeEl)  sizeEl.textContent = `${PS.width} × ${PS.height} px`;
-    const printImg = document.getElementById('printImg');
-    if (printImg)  printImg.src = src;
   };
-  img.onerror = () => showToast('❌ Gagal memuat foto');
+
+  img.onerror = () => {
+    console.error('[print.js] Gagal load dari:', src);
+
+    // Jika src adalah server path dan gagal, coba fallback base64
+    const fallback = framedSrc || editedSrc || imageSrc;
+    if (fallback && src !== fallback) {
+      console.warn('[print.js] Mencoba fallback base64…');
+      showToast('⚠️ Mencoba sumber alternatif…');
+      PS.src    = fallback;
+      img.src   = fallback;
+      return;
+    }
+
+    // Semua gagal
+    if (loading) loading.style.display = 'none';
+    showToast('❌ Gagal memuat foto. Kembali ke frame…');
+    setTimeout(() => { window.location.href = 'frame.php'; }, 2000);
+  };
+
   img.src = src;
 }
 
-// ─── SETUP EVENT LISTENERS — semua CSP-safe ──────────────────
+// ─── SETUP EVENT LISTENERS ───────────────────────────────────
 function setupEvents() {
   // Card headers
   document.getElementById('cardPrint')?.querySelector('.action-card-header')
@@ -463,7 +499,7 @@ function setupEvents() {
     if (e.key === 'Enter') doAddContact();
   });
 
-  // WA add-contact tab shortcut (dari empty state)
+  // WA add-contact tab shortcut
   document.getElementById('btnAddTabInline')?.addEventListener('click', () => switchWaTab('add'));
 
   // Quality slider
