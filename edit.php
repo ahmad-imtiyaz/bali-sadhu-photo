@@ -371,6 +371,190 @@
       <div class="crop-grid"></div>
     </div>
   </div>
+  <!-- ============================================================
+     BOTTOM SHEET — Mobile only (CSS hide on desktop/iPad)
+     Tambahkan HTML ini di dalam <body> edit.php,
+     tepat sebelum <script src="js/edit.js"></script>
+     ============================================================ -->
+
+<div class="bottom-sheet" id="bottomSheet">
+
+  <!-- Handle bar + Tab pills -->
+  <div class="sheet-handle" id="sheetHandle">
+    <div class="sheet-tab-row">
+      <button class="sheet-tab-btn active" data-tab="adjust">Adjustments</button>
+      <button class="sheet-tab-btn" data-tab="filters">Filters</button>
+      <button class="sheet-tab-btn" data-tab="crop">Crop</button>
+    </div>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="sheet-content">
+
+    <!-- PANEL: Adjustments -->
+    <div class="sheet-panel active" id="sheet-adjust">
+
+      <!-- Basic -->
+      <div class="adjustment-group">
+        <div class="group-label">Basic</div>
+
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Brightness</span>
+            <span class="slider-value" id="sval-brightness">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="brightness" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Contrast</span>
+            <span class="slider-value" id="sval-contrast">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="contrast" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Saturation</span>
+            <span class="slider-value" id="sval-saturation">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="saturation" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Warmth</span>
+            <span class="slider-value" id="sval-warmth">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="warmth" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Exposure</span>
+            <span class="slider-value" id="sval-exposure">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="exposure" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Highlights</span>
+            <span class="slider-value" id="sval-highlights">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="highlights" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Shadows</span>
+            <span class="slider-value" id="sval-shadows">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="shadows" min="-100" max="100" value="0">
+        </div>
+      </div>
+
+      <!-- Color -->
+      <div class="adjustment-group">
+        <div class="group-label">Color</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Hue</span>
+            <span class="slider-value" id="sval-hue">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider slider-hue" data-adj="hue" min="-180" max="180" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Vibrance</span>
+            <span class="slider-value" id="sval-vibrance">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="vibrance" min="-100" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Tint</span>
+            <span class="slider-value" id="sval-tint">+0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="tint" min="-100" max="100" value="0">
+        </div>
+      </div>
+
+      <!-- Detail -->
+      <div class="adjustment-group">
+        <div class="group-label">Detail</div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Sharpness</span>
+            <span class="slider-value" id="sval-sharpness">0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="sharpness" min="0" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Vignette</span>
+            <span class="slider-value" id="sval-vignette">0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="vignette" min="0" max="100" value="0">
+        </div>
+        <div class="slider-row">
+          <div class="slider-header">
+            <span>Blur</span>
+            <span class="slider-value" id="sval-blur">0</span>
+          </div>
+          <input type="range" class="slider sheet-slider" data-adj="blur" min="0" max="20" value="0">
+        </div>
+      </div>
+
+    </div><!-- /sheet-adjust -->
+
+    <!-- PANEL: Filters -->
+    <div class="sheet-panel" id="sheet-filters">
+      <div class="filter-grid" id="sheetFilterGrid"></div>
+    </div>
+
+    <!-- PANEL: Crop -->
+    <div class="sheet-panel" id="sheet-crop">
+
+      <div class="adjustment-group">
+        <div class="group-label">Orientasi</div>
+        <div class="crop-orientation">
+          <button class="crop-orient-btn active" id="btnOrientPortrait">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="5" y="2" width="14" height="20" rx="2"/></svg>
+            Portrait
+          </button>
+          <button class="crop-orient-btn" id="btnOrientLandscape">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="2" y="5" width="20" height="14" rx="2"/></svg>
+            Landscape
+          </button>
+        </div>
+      </div>
+
+      <div class="adjustment-group">
+        <div class="group-label">Ukuran Cetak</div>
+        <div class="crop-presets" id="cropPresets"></div>
+        <div class="crop-size-info">
+          <span id="cropSizeLabel">4R — 4 × 6 in</span>
+          <span id="cropSizeDim" class="crop-size-dim">Rasio 4:6</span>
+        </div>
+        <button class="btn-auto-crop" id="btnAutoCrop">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          Auto Crop ke Ukuran Ini
+        </button>
+        <p class="crop-auto-hint">Potong otomatis ke tengah dengan rasio yang dipilih.</p>
+      </div>
+
+      <div class="adjustment-group">
+        <div class="group-label">Manual Crop</div>
+        <div class="crop-actions">
+          <button class="btn-crop-manual" id="btnCropManualOpen">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 1v15a2 2 0 0 0 2 2h15"/><path d="M1 6h15a2 2 0 0 1 2 2v15"/></svg>
+            Manual
+          </button>
+          <button class="btn-crop-apply" id="btnCropApply">Apply</button>
+          <button class="btn-crop-cancel" id="btnCropCancel">Cancel</button>
+        </div>
+      </div>
+
+    </div><!-- /sheet-crop -->
+
+  </div><!-- /sheet-content -->
+</div><!-- /bottom-sheet -->
 
   <script src="js/edit.js"></script>
 </body>
