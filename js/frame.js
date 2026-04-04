@@ -1121,16 +1121,33 @@ function updateTouchModeBtn() {
   const btn = document.getElementById('btnTouchMode');
   if (!btn) return;
 
-  // Hanya tampil kalau ada frame aktif DAN di mobile
   const isMobile = window.innerWidth <= 767;
-  btn.style.display = (S.activeFrame && isMobile) ? 'flex' : 'none';
+  
+  if (!isMobile) {
+    btn.style.display = 'none';
+    return;
+  }
 
-  if (S.touchMode === 'moveFrame') {
-    btn.textContent = '🖼 Move Frame';
-    btn.classList.add('frame-mode');
-  } else {
-    btn.textContent = '🔍 Pan / Zoom';
+  // Di mobile: selalu tampilkan tombol, tapi ubah state berdasarkan kondisi
+  btn.style.display = 'flex';
+
+  if (!S.activeFrame) {
+    // Tidak ada frame → fixed ke mode pan, disable tombol
+    btn.textContent = '🔍 Pan';
     btn.classList.remove('frame-mode');
+    btn.disabled = true;
+    btn.style.opacity = '0.4';
+    S.touchMode = 'pan';
+  } else {
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    if (S.touchMode === 'moveFrame') {
+      btn.textContent = '🖼 Move Frame';
+      btn.classList.add('frame-mode');
+    } else {
+      btn.textContent = '🔍 Pan / Zoom';
+      btn.classList.remove('frame-mode');
+    }
   }
 }
 
@@ -1188,26 +1205,31 @@ canvasStage.addEventListener('touchstart', e => {
   }
 }, { passive: false });
 
-  canvasStage.addEventListener('touchmove', e => {
-    e.preventDefault();
-    if (e.touches.length === 1) {
-      // single finger pan
-      const dx = e.touches[0].clientX - _t1x;
-      const dy = e.touches[0].clientY - _t1y;
-      S.panX = _tpx + dx;
-      S.panY = _tpy + dy;
-      applyStageTransform();
-    } else if (e.touches.length === 2) {
-      // pinch zoom
-      const dx = e.touches[0].clientX - e.touches[1].clientX;
-      const dy = e.touches[0].clientY - e.touches[1].clientY;
-      const dist = Math.sqrt(dx * dx + dy * dy);
-      if (_lastDist > 0) {
-        setZoom(S.zoom * (dist / _lastDist));
-      }
-      _lastDist = dist;
+ canvasStage.addEventListener('touchmove', e => {
+  e.preventDefault();
+  
+  // Kalau mode moveFrame dan hanya 1 jari → skip pan, biarkan frame drag handle
+  if (S.activeFrame && S.touchMode === 'moveFrame' && e.touches.length === 1) {
+    return; // ← TAMBAH INI, sebelumnya tidak ada pengecekan di touchmove
+  }
+  
+  if (e.touches.length === 1) {
+    const dx = e.touches[0].clientX - _t1x;
+    const dy = e.touches[0].clientY - _t1y;
+    S.panX = _tpx + dx;
+    S.panY = _tpy + dy;
+    applyStageTransform();
+  } else if (e.touches.length === 2) {
+    // Pinch zoom — selalu aktif di kedua mode
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    if (_lastDist > 0) {
+      setZoom(S.zoom * (dist / _lastDist));
     }
-  }, { passive: false });
+    _lastDist = dist;
+  }
+}, { passive: false });
 
   canvasStage.addEventListener('touchend', e => {
     _lastDist = 0;

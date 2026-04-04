@@ -198,7 +198,15 @@
     }
 
     .toolbar-left, .toolbar-right { display: flex; align-items: center; gap: 6px; }
-    .toolbar-center { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-dim); }
+   .toolbar-center { 
+  display: flex; 
+  align-items: center; 
+  gap: 6px; 
+  font-size: 11px; 
+  color: var(--text-dim);
+  flex: 1;              /* ← tambah ini agar center bisa stretch */
+  justify-content: center;
+}
 
     .tool-btn {
       background: var(--bg3);
@@ -634,24 +642,33 @@
 /* ── Mobile ── */
 
 /* Sembunyikan di desktop, tampilkan di mobile */
+/* Sembunyikan di desktop */
 .touch-mode-btn { display: none; }
 
 @media (max-width: 767px) {
   .touch-mode-btn {
-    display: flex;
+    display: flex !important;
     background: var(--bg3);
-    border: 1px solid var(--border-gold);
+    border: 1.5px solid var(--border-gold);
     color: var(--gold);
-    font-size: 12px;
-    min-width: 80px;
+    font-size: 11px;
+    min-width: 90px;
+    height: 36px;
+    border-radius: 20px;        /* pill shape agar beda dari tombol lain */
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    transition: all 0.2s;
   }
   .touch-mode-btn.frame-mode {
-    background: var(--gold-glow);
+    background: var(--gold);    /* gold solid saat mode move frame */
     border-color: var(--gold);
-    color: var(--gold-light);
+    color: #000;                /* teks hitam di atas gold */
+  }
+  .touch-mode-btn:disabled {
+    opacity: 0.35;
+    pointer-events: none;
   }
 }
-
 @media (max-width: 767px) {
   :root {
     --panel-w: 0px;

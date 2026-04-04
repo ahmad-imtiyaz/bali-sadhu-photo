@@ -91,12 +91,12 @@
         </button>
         <button class="tool-btn" id="btnZoomFit">Fit</button>
       </div>
-      <!-- Tambah setelah btnZoomFit, hanya visible di mobile -->
-<button class="tool-btn touch-mode-btn" id="btnTouchMode" title="Mode Sentuh">
-  🔍 Pan
-</button>
 
-      <div class="toolbar-center" id="canvasSizeLabel">— × — px</div>
+        <!-- Pindah ke sini — tengah toolbar -->
+  <div class="toolbar-center" id="canvasSizeLabel">
+    <button class="tool-btn touch-mode-btn" id="btnTouchMode">🔍 Pan</button>
+    <span class="canvas-size-text">— × — px</span>
+  </div>
 
       <div class="toolbar-right">
         <button class="tool-btn" id="btnDownload">
