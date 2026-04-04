@@ -459,6 +459,7 @@
 
     .slider-wrap { display: flex; align-items: center; gap: 8px; }
     input[type=range] {
+      appearance: none;     
       -webkit-appearance: none;
       flex: 1;
       height: 3px;

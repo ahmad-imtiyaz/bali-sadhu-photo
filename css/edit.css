@@ -395,6 +395,7 @@ a.step:hover { color: var(--text-muted); }
 
 /* Sliders — thumb lebih besar untuk touch */
 .slider {
+  appearance: none;     
   -webkit-appearance: none;
   width: 100%;
   height: 4px;
