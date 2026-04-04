@@ -1,10 +1,7 @@
 /* ============================================================
    frame.js — Bali Sadhu Photo
-   v6.0 — FIX: hapus duplikat goToPrint() lama (base64 crash)
-               goToPrint() sekarang upload blob ke server
+   v7.1 — Hapus tombol Pan, frame langsung draggable otomatis
    ============================================================ */
-
-// ─── EARLY DECLARATIONS ──────────────────────────────────────
 
 let frameImgEl  = null;
 let frameDragEl = null;
@@ -34,7 +31,6 @@ const S = {
 
   frames: [],
   filterOrient: 'all',
-  touchMode: 'pan',
 };
 
 // ─── DOM ─────────────────────────────────────────────────────
@@ -53,7 +49,6 @@ const loadingOverlay = document.getElementById('loadingOverlay');
   setupAdjust();
   setupBackground();
   setupFrameBottomSheet();
-  setupTouchModeToggle();
   loadFramesFromServer();
   injectTransformPanel();
 })();
@@ -74,17 +69,17 @@ function injectTransformPanel() {
         </div>
         <input type="range" id="slRotate" min="-180" max="180" value="0">
       </div>
-      <div style="display:flex;gap:6px;margin-top:8px;">
-        <button class="tool-btn" id="btnRotL" title="-90°" style="flex:1;font-size:16px;">↺</button>
-        <button class="tool-btn" id="btnRotR" title="+90°" style="flex:1;font-size:16px;">↻</button>
-        <button class="tool-btn" id="btnRotReset" style="flex:1;font-size:11px;">Reset</button>
+      <div style="display:flex;gap:8px;margin-top:10px;">
+        <button class="tool-btn" id="btnRotL" title="-90°" style="flex:1;font-size:18px;min-height:44px;">↺</button>
+        <button class="tool-btn" id="btnRotR" title="+90°" style="flex:1;font-size:18px;min-height:44px;">↻</button>
+        <button class="tool-btn" id="btnRotReset" style="flex:1;font-size:12px;min-height:44px;">Reset</button>
       </div>
     </div>
     <div class="adjust-block">
       <div class="adjust-block-title">Cermin (Flip)</div>
-      <div style="display:flex;gap:6px;margin-top:4px;">
-        <button class="tool-btn" id="btnFlipH" style="flex:1;font-size:11px;">⇔ Flip Horizontal</button>
-        <button class="tool-btn" id="btnFlipV" style="flex:1;font-size:11px;">⇕ Flip Vertikal</button>
+      <div style="display:flex;gap:8px;margin-top:6px;">
+        <button class="tool-btn" id="btnFlipH" style="flex:1;font-size:13px;min-height:44px;">⇔ Flip Horizontal</button>
+        <button class="tool-btn" id="btnFlipV" style="flex:1;font-size:13px;min-height:44px;">⇕ Flip Vertikal</button>
       </div>
     </div>
   `;
@@ -143,7 +138,6 @@ function loadPhoto() {
   const src = editedPath || serverPath || base64Src || null;
 
   if (!src) {
-    // Demo mode
     photoCanvas.width  = 900;
     photoCanvas.height = 1200;
     pCtx.fillStyle = '#2a1f0e';
@@ -179,6 +173,7 @@ function loadPhoto() {
     console.error('[frame.js] Gagal load dari:', src);
     if (src !== base64Src && base64Src) {
       showToast('⚠️ Mencoba fallback cache lokal…');
+      img.crossOrigin = null;
       img.src = base64Src;
     } else {
       showToast('❌ Gagal load foto — kembali ke edit');
@@ -218,7 +213,7 @@ function redrawPhoto() {
   updateFrameOverlay();
 }
 
-// ─── GO TO PRINT — upload blob, tidak pakai toDataURL ────────
+// ─── GO TO PRINT ──────────────────────────────────────────────
 async function goToPrint() {
   showToast('⏳ Menyiapkan untuk cetak…');
 
@@ -226,7 +221,6 @@ async function goToPrint() {
   if (btnNext) { btnNext.disabled = true; btnNext.textContent = 'Menyiapkan…'; }
 
   try {
-    // 1. Render composite canvas (foto + frame overlay)
     const oc   = document.createElement('canvas');
     oc.width   = photoCanvas.width;
     oc.height  = photoCanvas.height;
@@ -234,16 +228,13 @@ async function goToPrint() {
     octx.drawImage(photoCanvas, 0, 0);
     renderFrameToCanvas(octx, oc);
 
-    // 2. Canvas → Blob (jauh lebih efisien dari toDataURL untuk foto besar)
     const blob = await new Promise((resolve, reject) => {
       oc.toBlob(
         (b) => { if (b) resolve(b); else reject(new Error('toBlob() gagal')); },
-        'image/jpeg',
-        0.92
+        'image/jpeg', 0.92
       );
     });
 
-    // 3. Upload blob ke server
     const photoId = sessionStorage.getItem('bsp_photoId');
     const fd = new FormData();
     fd.append('edited_image', blob, 'framed.jpg');
@@ -253,7 +244,7 @@ async function goToPrint() {
     const path = await new Promise((resolve, reject) => {
       const xhr = new XMLHttpRequest();
       const apiBase = window.location.pathname.replace(/\/[^\/]*$/, '');
-xhr.open('POST', apiBase + '/api/save_edited_image.php');
+      xhr.open('POST', apiBase + '/api/save_edited_image.php');
 
       xhr.upload.onprogress = (e) => {
         if (e.lengthComputable) {
@@ -281,14 +272,11 @@ xhr.open('POST', apiBase + '/api/save_edited_image.php');
       xhr.send(fd);
     });
 
-    // 4. Simpan path ke sessionStorage (bukan base64!)
     sessionStorage.setItem('bsp_framedPath', path);
-    sessionStorage.removeItem('bsp_framedSrc'); // bersihkan base64 lama
-
+    sessionStorage.removeItem('bsp_framedSrc');
     sessionStorage.setItem('bsp_frameId',    S.activeFrame?.id || 'none');
     sessionStorage.setItem('bsp_cropSizeId', sessionStorage.getItem('bsp_cropSizeId') || '4R');
 
-    // 5. Navigasi
     window.location.href = 'print.php';
 
   } catch (err) {
@@ -394,8 +382,6 @@ function applyFrame(frame) {
     S.frameOffX = 0; S.frameOffY = 0;
     S.frameScale = 1; S.frameOpacity = 1;
     S.frameRotate = 0; S.frameFlipH = false; S.frameFlipV = false;
-    S.touchMode = 'pan';
-    updateTouchModeBtn();
 
     setSlider('slOpacity', 100, 'valOpacity', '100%');
     setSlider('slScale',   100, 'valScale',   '100%');
@@ -427,8 +413,6 @@ function applyFrame(frame) {
 
 function removeActiveFrame() {
   S.activeFrame = null;
-  S.touchMode = 'pan';
-  updateTouchModeBtn();
   const infoBar = document.getElementById('activeFrameInfo');
   if (infoBar) infoBar.style.display = 'none';
   toggleAdjustPanel(false);
@@ -488,22 +472,31 @@ function refreshFrameStyle() {
   frameImgEl.style.transform = buildTransform();
 }
 
-// ─── DRAG ────────────────────────────────────────────────────
+// ─── FRAME DRAG ──────────────────────────────────────────────
+// Tidak perlu mode toggle — frame selalu bisa digeser langsung
+// 1 jari = geser frame | 2 jari = pinch zoom canvas
 function setupFrameDrag(el) {
   let dragging = false, sx, sy, sox, soy;
 
+  // Mouse — selalu aktif
   el.addEventListener('mousedown', e => {
-    dragging = true; sx = e.clientX; sy = e.clientY;
+    dragging = true;
+    sx = e.clientX; sy = e.clientY;
     sox = S.frameOffX; soy = S.frameOffY;
-    el.style.cursor = 'grabbing'; e.preventDefault();
+    el.style.cursor = 'grabbing';
+    e.preventDefault();
   });
+
+  // Touch — 1 jari geser frame, 2 jari untuk pinch zoom
   el.addEventListener('touchstart', e => {
-    if (S.touchMode !== 'moveFrame') return;
+    if (!S.activeFrame) return;
+    if (e.touches.length !== 1) return; // biarkan 2 jari ke canvas zoom
     dragging = true;
     const t = e.touches[0];
     sx = t.clientX; sy = t.clientY;
     sox = S.frameOffX; soy = S.frameOffY;
-    e.stopPropagation(); e.preventDefault();
+    e.stopPropagation();
+    e.preventDefault();
   }, { passive: false });
 
   document.addEventListener('mousemove', e => {
@@ -513,12 +506,15 @@ function setupFrameDrag(el) {
     S.frameOffY = soy + (e.clientY - sy) * dz;
     refreshFrameStyle();
   });
+
   document.addEventListener('touchmove', e => {
-    if (!dragging || S.touchMode !== 'moveFrame') return;
+    if (!dragging) return;
+    if (e.touches.length !== 1) { dragging = false; return; }
     const t = e.touches[0], dz = 1 / S.zoom;
     S.frameOffX = sox + (t.clientX - sx) * dz;
     S.frameOffY = soy + (t.clientY - sy) * dz;
-    refreshFrameStyle(); e.preventDefault();
+    refreshFrameStyle();
+    e.preventDefault();
   }, { passive: false });
 
   const stop = () => { dragging = false; if (el) el.style.cursor = 'grab'; };
@@ -526,33 +522,13 @@ function setupFrameDrag(el) {
   document.addEventListener('touchend', stop);
 }
 
-function setupTouchModeToggle() {
-  const btn = document.getElementById('btnTouchMode');
-  if (!btn) return;
-  updateTouchModeBtn();
-  btn.addEventListener('click', () => {
-    S.touchMode = S.touchMode === 'pan' ? 'moveFrame' : 'pan';
-    updateTouchModeBtn();
-  });
-}
-
-function updateTouchModeBtn() {
-  const btn = document.getElementById('btnTouchMode');
-  if (!btn) return;
-  if (!S.activeFrame) {
-    btn.textContent = '🔍 Pan'; btn.classList.remove('frame-mode'); btn.disabled = true; S.touchMode = 'pan';
-  } else {
-    btn.disabled = false;
-    if (S.touchMode === 'moveFrame') { btn.textContent = '🖼 Move Frame'; btn.classList.add('frame-mode'); }
-    else { btn.textContent = '🔍 Pan / Zoom'; btn.classList.remove('frame-mode'); }
-  }
-}
-
 // ─── ZOOM & PAN ──────────────────────────────────────────────
 function setupZoom() {
   document.getElementById('btnZoomIn')?.addEventListener('click',  () => setZoom(S.zoom * 1.2));
   document.getElementById('btnZoomOut')?.addEventListener('click', () => setZoom(S.zoom / 1.2));
   document.getElementById('btnZoomFit')?.addEventListener('click', fitToScreen);
+  document.getElementById('btnZoom100')?.addEventListener('click', zoomTo100);
+
   if (!canvasStage) return;
 
   canvasStage.addEventListener('wheel', e => {
@@ -572,12 +548,14 @@ function setupZoom() {
   });
   document.addEventListener('mouseup', () => { panning = false; });
 
+  // Touch pan & pinch zoom di canvas (saat tidak ada frame atau 2 jari)
   let _t1x, _t1y, _tpx, _tpy, _lastDist = 0;
   canvasStage.addEventListener('touchstart', e => {
-    if (S.activeFrame && S.touchMode === 'moveFrame') return;
     e.preventDefault();
-    if (e.touches.length === 1) { _t1x = e.touches[0].clientX; _t1y = e.touches[0].clientY; _tpx = S.panX; _tpy = S.panY; }
-    else if (e.touches.length === 2) {
+    if (e.touches.length === 1) {
+      _t1x = e.touches[0].clientX; _t1y = e.touches[0].clientY;
+      _tpx = S.panX; _tpy = S.panY;
+    } else if (e.touches.length === 2) {
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       _lastDist = Math.sqrt(dx * dx + dy * dy);
@@ -586,8 +564,8 @@ function setupZoom() {
 
   canvasStage.addEventListener('touchmove', e => {
     e.preventDefault();
-    if (S.activeFrame && S.touchMode === 'moveFrame' && e.touches.length === 1) return;
-    if (e.touches.length === 1) {
+    if (e.touches.length === 1 && !S.activeFrame) {
+      // Pan canvas hanya kalau tidak ada frame aktif (frame drag handle-nya sendiri)
       S.panX = _tpx + (e.touches[0].clientX - _t1x);
       S.panY = _tpy + (e.touches[0].clientY - _t1y);
       applyStageTransform();
@@ -603,20 +581,50 @@ function setupZoom() {
   canvasStage.addEventListener('touchend', () => { _lastDist = 0; }, { passive: true });
 }
 
-function setZoom(z) { S.zoom = Math.max(0.05, Math.min(8, z)); applyStageTransform(); }
-
-function applyStageTransform() {
-  if (compositeWrap) compositeWrap.style.transform = `translate(${S.panX}px,${S.panY}px) scale(${S.zoom})`;
-  const zd = document.getElementById('zoomDisplay');
-  if (zd) zd.textContent = Math.round(S.zoom * 100) + '%';
+function setZoom(z) {
+  S.zoom = Math.max(0.05, Math.min(8, z));
+  applyStageTransform();
+  updateZoomButtons();
 }
 
 function fitToScreen() {
   if (!canvasStage) return;
-  const rect = canvasStage.getBoundingClientRect();
-  if (rect.width <= 0 || rect.height <= 0) { setTimeout(fitToScreen, 100); return; }
+  requestAnimationFrame(() => {
+    const rect = canvasStage.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) { setTimeout(fitToScreen, 100); return; }
+    const canvasW = photoCanvas.width  || S.photoW || 900;
+    const canvasH = photoCanvas.height || S.photoH || 1200;
+    const padding = 32;
+    const availW  = rect.width  - padding;
+    const availH  = rect.height - padding;
+    S.zoom = Math.min(availW / canvasW, availH / canvasH, 1);
+    S.panX = 0; S.panY = 0;
+    applyStageTransform();
+    updateZoomButtons();
+  });
+}
+
+function zoomTo100() {
   S.zoom = 1; S.panX = 0; S.panY = 0;
   applyStageTransform();
+  updateZoomButtons();
+  showToast('Zoom 100% — ukuran asli');
+}
+
+function applyStageTransform() {
+  if (compositeWrap) {
+    compositeWrap.style.transform = `translate(${S.panX}px,${S.panY}px) scale(${S.zoom})`;
+  }
+  const zd = document.getElementById('zoomDisplay');
+  if (zd) zd.textContent = Math.round(S.zoom * 100) + '%';
+}
+
+function updateZoomButtons() {
+  const btnFit = document.getElementById('btnZoomFit');
+  const btn100 = document.getElementById('btnZoom100');
+  if (btnFit) btnFit.classList.remove('active');
+  if (btn100) btn100.classList.remove('active');
+  if (Math.round(S.zoom * 100) === 100 && btn100) btn100.classList.add('active');
 }
 
 // ─── ADJUST ──────────────────────────────────────────────────
@@ -647,10 +655,10 @@ function applyPositionPreset(pos) {
   const cw = photoCanvas.width, ch = photoCanvas.height;
   const hdw = (cw * S.frameScale - cw) / 2, hdh = (ch * S.frameScale - ch) / 2;
   const map = {
-    'top-left': [-hdw, -hdh], 'top-center': [0, -hdh], 'top-right': [hdw, -hdh],
-    'center': [0, 0],
-    'bottom-left': [-hdw, hdh], 'bottom-center': [0, hdh], 'bottom-right': [hdw, hdh],
-    'left-center': [-hdw, 0], 'right-center': [hdw, 0],
+    'top-left':      [-hdw, -hdh], 'top-center':    [0, -hdh], 'top-right':    [hdw, -hdh],
+    'center':        [0, 0],
+    'bottom-left':   [-hdw, hdh],  'bottom-center': [0, hdh],  'bottom-right': [hdw, hdh],
+    'left-center':   [-hdw, 0],    'right-center':  [hdw, 0],
   };
   if (map[pos]) { [S.frameOffX, S.frameOffY] = map[pos]; refreshFrameStyle(); }
 }
@@ -819,7 +827,6 @@ async function downloadPreview() {
   octx.drawImage(photoCanvas, 0, 0);
   renderFrameToCanvas(octx, oc);
 
-  // Pakai toBlob agar tidak crash untuk foto besar
   oc.toBlob((blob) => {
     if (!blob) { showToast('❌ Gagal buat preview'); return; }
     const url  = URL.createObjectURL(blob);
@@ -944,7 +951,7 @@ function renderFbsFrameGrid() {
   const filter  = S.filterOrient;
   const visible = S.frames.filter(f => filter === 'all' || f.orient === filter);
   if (!visible.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;font-size:13px;color:var(--text-dim);padding:24px 0;line-height:1.8;">Belum ada frame<br><span style="color:var(--gold);opacity:0.8;">Upload PNG di bawah ↓</span></div>`;
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;font-size:14px;color:var(--text-dim);padding:24px 0;line-height:1.8;">Belum ada frame<br><span style="color:var(--gold);opacity:0.8;">Upload PNG di bawah ↓</span></div>`;
     return;
   }
   visible.forEach(frame => {

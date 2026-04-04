@@ -76,19 +76,20 @@
     <!-- Toolbar -->
     <div class="canvas-toolbar">
       <div class="toolbar-left">
-        <button class="tool-btn" id="btnZoomOut" title="Zoom Out">
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M1.5 5.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <button class="tool-btn" id="btnZoomOut" title="Perkecil">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M1.5 6.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
         <span class="zoom-display" id="zoomDisplay">100%</span>
-        <button class="tool-btn" id="btnZoomIn" title="Zoom In">
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1.5v8M1.5 5.5h8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+        <button class="tool-btn" id="btnZoomIn" title="Perbesar">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <button class="tool-btn" id="btnZoomFit">Fit</button>
+        <button class="tool-btn" id="btnZoomFit" title="Sesuaikan layar">Fit</button>
+        <button class="tool-btn" id="btnZoom100" title="Zoom 100% ukuran asli">100%</button>
       </div>
 
       <div class="toolbar-right">
-        <button class="tool-btn" id="btnDownload">
-          <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><path d="M5.5 1v6M2.5 5l3 3 3-3M1 9.5h9" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <button class="tool-btn" id="btnDownload" title="Download preview">
+          <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v8M3.5 7l3 3 3-3M1 11.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download Preview
         </button>
       </div>
@@ -116,7 +117,6 @@
     <!-- ── TAB: FRAMES ── -->
     <div class="tab-content active" id="tab-frames">
 
-      <!-- Upload Zone — prominent, at top -->
       <div class="upload-zone" id="uploadZone">
         <div class="upload-zone-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -131,26 +131,21 @@
         <input type="file" id="frameFileInput" accept="image/png" hidden multiple>
       </div>
 
-      <!-- Orientation filter -->
       <div class="orient-filter">
         <button class="orient-btn active" data-orient="all">Semua</button>
         <button class="orient-btn" data-orient="portrait">Portrait</button>
         <button class="orient-btn" data-orient="landscape">Landscape</button>
       </div>
 
-      <!-- Currently applied frame info -->
       <div class="active-frame-info" id="activeFrameInfo" style="display:none;">
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="color:var(--gold);flex-shrink:0"><rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
         <span class="active-frame-info-name" id="activeFrameInfoName">—</span>
         <button class="btn-remove-frame" onclick="removeActiveFrame()">Hapus</button>
       </div>
 
-      <!-- Gallery -->
       <div>
         <div class="section-label" style="margin-bottom:10px;">Galeri Frame</div>
-        <div class="frames-grid" id="framesGrid">
-          <!-- populated by JS -->
-        </div>
+        <div class="frames-grid" id="framesGrid"></div>
       </div>
 
     </div>
@@ -248,7 +243,7 @@
 <div class="frame-bottom-sheet" id="frameBottomSheet" style="display:none;">
   <div class="fbs-handle" id="fbsHandle">
     <div class="fbs-tab-row">
-      <button class="fbs-mode-btn" id="btnTouchMode" disabled>🔍 Pan</button>
+      <!-- Tombol Pan DIHAPUS dari sini -->
       <button class="fbs-tab-btn active" data-fbs="frames">Frames</button>
       <button class="fbs-tab-btn" data-fbs="adjust">Adjust</button>
       <button class="fbs-tab-btn" data-fbs="background">Background</button>
@@ -259,7 +254,6 @@
     <!-- PANEL: Frames -->
     <div class="fbs-panel active" id="fbs-frames">
 
-      <!-- Upload Zone Mobile -->
       <div class="upload-zone" id="fbsUploadZone">
         <div class="upload-zone-icon">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
