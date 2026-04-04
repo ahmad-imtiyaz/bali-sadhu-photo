@@ -643,6 +643,39 @@
 
 /* Sembunyikan di desktop, tampilkan di mobile */
 /* Sembunyikan di desktop */
+/* ── Touch Mode Button — hanya di mobile bottom sheet ── */
+.fbs-mode-btn {
+  background: var(--bg4);
+  border: 1.5px solid var(--border-gold);
+  color: var(--gold);
+  border-radius: 20px;
+  padding: 5px 14px;
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all 0.2s;
+  touch-action: manipulation;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.fbs-mode-btn.frame-mode {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: #000;
+}
+
+.fbs-mode-btn:disabled {
+  opacity: 0.35;
+  border-color: var(--border);
+  color: var(--text-dim);
+  pointer-events: none;
+}
 .touch-mode-btn { display: none; }
 
 @media (max-width: 767px) {

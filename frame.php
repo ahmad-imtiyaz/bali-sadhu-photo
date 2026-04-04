@@ -92,11 +92,6 @@
         <button class="tool-btn" id="btnZoomFit">Fit</button>
       </div>
 
-        <!-- Pindah ke sini — tengah toolbar -->
-  <div class="toolbar-center" id="canvasSizeLabel">
-    <button class="tool-btn touch-mode-btn" id="btnTouchMode">🔍 Pan</button>
-    <span class="canvas-size-text">— × — px</span>
-  </div>
 
       <div class="toolbar-right">
         <button class="tool-btn" id="btnDownload">
@@ -261,6 +256,7 @@
 <div class="frame-bottom-sheet" id="frameBottomSheet" style="display:none;">
   <div class="fbs-handle" id="fbsHandle">
     <div class="fbs-tab-row">
+         <button class="fbs-mode-btn" id="btnTouchMode" disabled>🔍 Pan</button>
       <button class="fbs-tab-btn active" data-fbs="frames">Frames</button>
       <button class="fbs-tab-btn" data-fbs="adjust">Adjust</button>
       <button class="fbs-tab-btn" data-fbs="background">Background</button>

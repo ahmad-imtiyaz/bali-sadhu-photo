@@ -1121,26 +1121,14 @@ function updateTouchModeBtn() {
   const btn = document.getElementById('btnTouchMode');
   if (!btn) return;
 
-  const isMobile = window.innerWidth <= 767;
-  
-  if (!isMobile) {
-    btn.style.display = 'none';
-    return;
-  }
-
-  // Di mobile: selalu tampilkan tombol, tapi ubah state berdasarkan kondisi
-  btn.style.display = 'flex';
-
   if (!S.activeFrame) {
-    // Tidak ada frame → fixed ke mode pan, disable tombol
+    // Tidak ada frame → disable, reset ke pan
     btn.textContent = '🔍 Pan';
     btn.classList.remove('frame-mode');
     btn.disabled = true;
-    btn.style.opacity = '0.4';
     S.touchMode = 'pan';
   } else {
     btn.disabled = false;
-    btn.style.opacity = '1';
     if (S.touchMode === 'moveFrame') {
       btn.textContent = '🖼 Move Frame';
       btn.classList.add('frame-mode');
