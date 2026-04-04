@@ -253,6 +253,119 @@
 
 <input type="file" id="frameFileInput" accept="image/png" hidden multiple>
 <div id="toast"></div>
+<!-- BOTTOM SHEET — Mobile only -->
+<div class="frame-bottom-sheet" id="frameBottomSheet" style="display:none;">
+  <div class="fbs-handle" id="fbsHandle">
+    <div class="fbs-tab-row">
+      <button class="fbs-tab-btn active" data-fbs="frames">Frames</button>
+      <button class="fbs-tab-btn" data-fbs="adjust">Adjust</button>
+      <button class="fbs-tab-btn" data-fbs="background">Background</button>
+    </div>
+  </div>
+  <div class="fbs-content">
+
+    <!-- PANEL: Frames -->
+    <div class="fbs-panel active" id="fbs-frames">
+      <div class="orient-filter">
+        <button class="orient-btn active" data-orient="all">Semua</button>
+        <button class="orient-btn" data-orient="portrait">Portrait</button>
+        <button class="orient-btn" data-orient="landscape">Landscape</button>
+      </div>
+      <div class="active-frame-info" id="fbsActiveFrameInfo" style="display:none;">
+        <span class="active-frame-info-name" id="fbsActiveFrameInfoName">—</span>
+        <button class="btn-remove-frame" onclick="removeActiveFrame()">Hapus</button>
+      </div>
+      <div class="frames-grid" id="fbsFramesGrid"></div>
+      <div class="upload-zone" id="fbsUploadZone">
+        <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
+          <path d="M11 4v10M7 8l4-4 4 4M4 17h14" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        <span>Upload Frame PNG</span>
+        <span class="upload-zone-hint">PNG transparan · max 8MB</span>
+        <input type="file" id="fbsFrameFileInput" accept="image/png" hidden multiple>
+      </div>
+    </div>
+
+    <!-- PANEL: Adjust -->
+    <div class="fbs-panel" id="fbs-adjust">
+      <div class="adjust-block">
+        <div class="adjust-block-title">Opasitas Frame</div>
+        <div class="slider-label-row">
+          <span class="slider-label">Transparency</span>
+          <span class="slider-val" id="fbsValOpacity">100%</span>
+        </div>
+        <input type="range" id="fbsSlOpacity" min="10" max="100" value="100">
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title">Ukuran Frame</div>
+        <div class="slider-label-row">
+          <span class="slider-label">Scale</span>
+          <span class="slider-val" id="fbsValScale">100%</span>
+        </div>
+        <input type="range" id="fbsSlScale" min="50" max="200" value="100">
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title">Rotasi Frame</div>
+        <div class="slider-label-row">
+          <span class="slider-label">Sudut</span>
+          <span class="slider-val" id="fbsValRotate">0°</span>
+        </div>
+        <input type="range" id="fbsSlRotate" min="-180" max="180" value="0">
+        <div style="display:flex;gap:6px;margin-top:8px;">
+          <button class="tool-btn" id="fbsBtnRotL" style="flex:1;font-size:16px;min-height:44px;">↺</button>
+          <button class="tool-btn" id="fbsBtnRotR" style="flex:1;font-size:16px;min-height:44px;">↻</button>
+          <button class="tool-btn" id="fbsBtnRotReset" style="flex:1;font-size:11px;min-height:44px;">Reset</button>
+        </div>
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title">Cermin (Flip)</div>
+        <div style="display:flex;gap:6px;margin-top:4px;">
+          <button class="tool-btn" id="fbsBtnFlipH" style="flex:1;min-height:44px;font-size:11px;">⇔ Flip H</button>
+          <button class="tool-btn" id="fbsBtnFlipV" style="flex:1;min-height:44px;font-size:11px;">⇕ Flip V</button>
+        </div>
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title" style="margin-bottom:8px;">Posisi Frame</div>
+        <div class="pos-grid">
+          <button class="pos-btn" data-pos="top-left">↖</button>
+          <button class="pos-btn" data-pos="top-center">↑</button>
+          <button class="pos-btn" data-pos="top-right">↗</button>
+          <button class="pos-btn active" data-pos="center">✛</button>
+          <button class="pos-btn" data-pos="bottom-left">↙</button>
+          <button class="pos-btn" data-pos="bottom-center">↓</button>
+          <button class="pos-btn" data-pos="bottom-right">↘</button>
+          <button class="pos-btn" data-pos="left-center">←</button>
+          <button class="pos-btn" data-pos="right-center">→</button>
+        </div>
+      </div>
+      <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi & Ukuran</button>
+    </div>
+
+    <!-- PANEL: Background -->
+    <div class="fbs-panel" id="fbs-background">
+      <div class="adjust-block">
+        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Background</div>
+        <div class="bg-swatches" id="fbsBgSwatches"></div>
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Kustom</div>
+        <div class="bg-custom-row">
+          <span class="bg-custom-label">Pilih warna bebas</span>
+          <input type="color" id="fbsBgColorPicker" value="#ffffff">
+        </div>
+      </div>
+      <div class="adjust-block">
+        <div class="adjust-block-title" style="margin-bottom:8px;">Padding Canvas</div>
+        <div class="slider-label-row">
+          <span class="slider-label">Jarak tepi</span>
+          <span class="slider-val" id="fbsValPadding">0px</span>
+        </div>
+        <input type="range" id="fbsSlPadding" min="0" max="80" value="0">
+      </div>
+    </div>
+
+  </div>
+</div>
 
 
   <script src="js/frame.js"></script>

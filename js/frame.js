@@ -691,6 +691,7 @@ const loadingOverlay= document.getElementById('loadingOverlay');
   setupUpload();
   setupAdjust();
   setupBackground();
+  setupFrameBottomSheet();
   initDefaultFrames();
   loadFramesFromServer();
   injectTransformPanel();
@@ -790,6 +791,7 @@ function syncRotateSlider() {
   const vl = document.getElementById('valRotate');
   if (sl) sl.value = S.frameRotate;
   if (vl) vl.textContent = S.frameRotate + '°';
+  syncFbsRotate();
 }
 
 // ─── LOAD PHOTO ──────────────────────────────────────────────
@@ -844,7 +846,14 @@ function drawPhoto() {
 function finalizePhotoLoad() {
   if (loadingOverlay) loadingOverlay.classList.add('hidden');
   if (compositeWrap) compositeWrap.style.display = '';
-  fitToScreen(); renderFrameGrid(); updateFrameOverlay();
+  // Delay kecil agar CSS layout selesai dihitung dulu
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      fitToScreen();
+      renderFrameGrid();
+      updateFrameOverlay();
+    });
+  });
 }
 
 function redrawPhoto() {
@@ -923,9 +932,17 @@ function renderFrameGrid() {
       card.appendChild(del);
     }
 
-    card.addEventListener('click', () => applyFrame(frame));
+  card.addEventListener('click', () => applyFrame(frame));
     grid.appendChild(card);
   });
+
+  // Selalu sync ke bottom sheet grid juga
+  renderFbsFrameGrid();
+  // Sync active frame info di sheet
+  const fbsInfoBar  = document.getElementById('fbsActiveFrameInfo');
+  const fbsInfoName = document.getElementById('fbsActiveFrameInfoName');
+  if (fbsInfoBar)  fbsInfoBar.style.display = S.activeFrame ? '' : 'none';
+  if (fbsInfoName && S.activeFrame) fbsInfoName.textContent = S.activeFrame.name;
 }
 
 // ─── APPLY FRAME ─────────────────────────────────────────────
@@ -938,8 +955,13 @@ function applyFrame(frame) {
     S.frameRotate  = 0; S.frameFlipH = false; S.frameFlipV = false;
 
     setSlider('slOpacity', 100, 'valOpacity', '100%');
+    const fbsOp = document.getElementById('fbsSlOpacity'); if(fbsOp) fbsOp.value = 100;
+const fbsSc = document.getElementById('fbsSlScale');   if(fbsSc) fbsSc.value = 100;
+const fbsOV = document.getElementById('fbsValOpacity'); if(fbsOV) fbsOV.textContent = '100%';
+const fbsSV = document.getElementById('fbsValScale');   if(fbsSV) fbsSV.textContent = '100%';
     setSlider('slScale',   100, 'valScale',   '100%');
     syncRotateSlider();
+    syncFbsRotate();
 
     // Reset flip button highlight
     ['btnFlipH','btnFlipV'].forEach(id => {
@@ -1063,9 +1085,15 @@ function applyStageTransform() {
 
 function fitToScreen() {
   if (!canvasStage) return;
-  const aw=canvasStage.clientWidth-64, ah=canvasStage.clientHeight-64;
-  const cw=photoCanvas.width||800, ch=photoCanvas.height||600;
-  S.zoom=Math.min(aw/cw,ah/ch,1); S.panX=0; S.panY=0; applyStageTransform();
+  const rect = canvasStage.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) {
+    setTimeout(fitToScreen, 100);
+    return;
+  }
+  // Selalu 100% zoom, user bisa zoom out manual kalau perlu
+  S.zoom = 1;
+  S.panX = 0; S.panY = 0;
+  applyStageTransform();
 }
 
 // ─── ADJUST ──────────────────────────────────────────────────
@@ -1142,28 +1170,69 @@ function setupUpload() {
 
 function handleFrameFile(file) {
   if (!file) return;
-  if (file.type !== 'image/png') { showToast('❌ Harus file PNG (transparan)'); return; }
-  if (file.size > 8*1024*1024) { showToast('❌ File terlalu besar! Maksimal 8MB'); return; }
+
+  // Validasi tipe file
+  if (file.type !== 'image/png') {
+    showToast('❌ Harus file PNG (transparan)');
+    return;
+  }
+
+  // Validasi ukuran (max 8MB)
+  if (file.size > 8 * 1024 * 1024) {
+    showToast('❌ File terlalu besar! Maksimal 8MB');
+    return;
+  }
 
   showToast('⏳ Memproses frame…');
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const base64src = ev.target.result;
-    const img = new Image();
-    img.onload = () => {
-      const orient = img.naturalWidth >= img.naturalHeight ? 'landscape' : 'portrait';
+
+  // Gunakan Object URL (lebih cepat dari base64)
+  const objectUrl = URL.createObjectURL(file);
+  const img = new Image();
+
+  img.onload = () => {
+    try {
+      // Deteksi orientasi gambar
+      const orient =
+        img.naturalWidth >= img.naturalHeight
+          ? 'landscape'
+          : 'portrait';
+
       const localId = 'local-' + Date.now();
-      const frameObj = { id: localId, name: cleanFileName(file.name), orient, src: base64src, thumb: base64src };
+
+      const frameObj = {
+        id: localId,
+        name: cleanFileName(file.name),
+        orient: orient,
+        src: objectUrl,
+        thumb: objectUrl,
+        _objUrl: objectUrl // simpan untuk cleanup nanti
+      };
+
+      // Simpan ke state
       S.frames.push(frameObj);
+
+      // Render ulang UI
       renderFrameGrid();
+
       showToast('✓ Frame berhasil ditambahkan!');
+
+      // Upload ke server (async)
       uploadToServer(file, frameObj);
-    };
-    img.onerror = () => showToast('❌ File PNG tidak valid');
-    img.src = base64src;
+
+    } catch (err) {
+      console.error(err);
+      URL.revokeObjectURL(objectUrl);
+      showToast('❌ Terjadi kesalahan saat memproses gambar');
+    }
   };
-  reader.onerror = () => showToast('❌ Gagal membaca file');
-  reader.readAsDataURL(file);
+
+  img.onerror = () => {
+    URL.revokeObjectURL(objectUrl);
+    showToast('❌ File PNG tidak valid atau tidak bisa dibaca');
+  };
+
+  // Trigger load
+  img.src = objectUrl;
 }
 
 function cleanFileName(fn) {
@@ -1193,6 +1262,8 @@ async function uploadToServer(file, frameObj) {
 
 async function deleteFrame(localId, srvId) {
   if (srvId) try { await fetch(`api/frames.php?id=${srvId}`,{method:'DELETE'}); } catch(e) {}
+  const f = S.frames.find(f => f.id === localId);
+  if (f?._objUrl) URL.revokeObjectURL(f._objUrl);
   S.frames = S.frames.filter(f=>f.id!==localId);
   if (S.activeFrame?.id===localId) removeActiveFrame();
   renderFrameGrid(); showToast('🗑 Frame dihapus');
@@ -1287,6 +1358,152 @@ function showToast(msg) {
   el.textContent=msg; el.classList.add('show');
   clearTimeout(_toastTimer);
   _toastTimer=setTimeout(()=>el.classList.remove('show'),3000);
+}
+
+// ─── BOTTOM SHEET MOBILE ─────────────────────────────────────
+function setupFrameBottomSheet() {
+  const sheet = document.getElementById('frameBottomSheet');
+  if (!sheet) return;
+
+  // Tab switching
+  document.querySelectorAll('.fbs-tab-btn').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      document.querySelectorAll('.fbs-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.fbs-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      const panel = document.getElementById(`fbs-${btn.dataset.fbs}`);
+      if (panel) panel.classList.add('active');
+      if (!sheet.classList.contains('expanded')) sheet.classList.add('expanded');
+    });
+  });
+
+  // Handle toggle
+  document.getElementById('fbsHandle')?.addEventListener('click', () => sheet.classList.toggle('expanded'));
+
+  // Sliders — sync dengan state S
+  const sliders = [
+    { id: 'fbsSlOpacity', val: 'fbsValOpacity', fmt: v => v+'%', apply: v => { S.frameOpacity = v/100; refreshFrameStyle(); } },
+    { id: 'fbsSlScale',   val: 'fbsValScale',   fmt: v => v+'%', apply: v => { S.frameScale = v/100; refreshFrameStyle(); } },
+    { id: 'fbsSlRotate',  val: 'fbsValRotate',  fmt: v => v+'°', apply: v => { S.frameRotate = v; syncRotateSlider(); refreshFrameStyle(); } },
+    { id: 'fbsSlPadding', val: 'fbsValPadding', fmt: v => v+'px', apply: v => { S.padding = v; const el = document.getElementById('valPadding'); if(el) el.textContent = v+'px'; const sl = document.getElementById('slPadding'); if(sl) sl.value = v; redrawPhoto(); fitToScreen(); } },
+  ];
+  sliders.forEach(({id, val, fmt, apply}) => {
+    const sl = document.getElementById(id), vl = document.getElementById(val);
+    if (!sl) return;
+    sl.addEventListener('input', () => { const v = parseInt(sl.value); if(vl) vl.textContent = fmt(v); apply(v); });
+  });
+
+  // Rotate buttons
+  document.getElementById('fbsBtnRotL')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate - 90 + 540) % 360) - 180;
+    syncRotateSlider(); syncFbsRotate(); refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnRotR')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate + 90 + 180) % 360) - 180;
+    syncRotateSlider(); syncFbsRotate(); refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnRotReset')?.addEventListener('click', () => {
+    S.frameRotate = 0; syncRotateSlider(); syncFbsRotate(); refreshFrameStyle();
+  });
+
+  // Flip buttons
+  document.getElementById('fbsBtnFlipH')?.addEventListener('click', () => {
+    S.frameFlipH = !S.frameFlipH;
+    const b = document.getElementById('fbsBtnFlipH');
+    if(b){ b.style.color = S.frameFlipH ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipH ? 'var(--gold)' : ''; }
+    refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnFlipV')?.addEventListener('click', () => {
+    S.frameFlipV = !S.frameFlipV;
+    const b = document.getElementById('fbsBtnFlipV');
+    if(b){ b.style.color = S.frameFlipV ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipV ? 'var(--gold)' : ''; }
+    refreshFrameStyle();
+  });
+
+  // Position buttons in sheet
+  document.querySelectorAll('#fbs-adjust .pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fbs-adjust .pos-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      applyPositionPreset(btn.dataset.pos);
+    });
+  });
+
+  // Orient filter in sheet
+  document.querySelectorAll('#fbs-frames .orient-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('#fbs-frames .orient-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.filterOrient = btn.dataset.orient;
+      renderFrameGrid();
+    });
+  });
+
+  // Upload in sheet
+  const fbsZone  = document.getElementById('fbsUploadZone');
+  const fbsInput = document.getElementById('fbsFrameFileInput');
+  if (fbsZone && fbsInput) {
+    fbsZone.addEventListener('click', () => fbsInput.click());
+    fbsInput.addEventListener('change', e => { [...e.target.files].forEach(handleFrameFile); fbsInput.value = ''; });
+  }
+
+  // Background swatches in sheet
+  const fbsSwatches = document.getElementById('fbsBgSwatches');
+  if (fbsSwatches) {
+    BG_SWATCHES.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'bg-swatch';
+      btn.style.background = color;
+      btn.style.border = color==='#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent';
+      btn.addEventListener('click', () => { setBgColor(color); });
+      fbsSwatches.appendChild(btn);
+    });
+  }
+  const fbsPicker = document.getElementById('fbsBgColorPicker');
+  if (fbsPicker) fbsPicker.addEventListener('input', e => setBgColor(e.target.value));
+
+  // Render frames ke sheet grid juga — patch renderFrameGrid
+  // sementara koosong
+}
+
+function syncFbsRotate() {
+  const sl = document.getElementById('fbsSlRotate');
+  const vl = document.getElementById('fbsValRotate');
+  if (sl) sl.value = S.frameRotate;
+  if (vl) vl.textContent = S.frameRotate + '°';
+}
+
+let _origRenderFrameGrid = null;
+
+function renderFbsFrameGrid() {
+  const grid = document.getElementById('fbsFramesGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  const filter = S.filterOrient;
+  const visible = S.frames.filter(f => filter==='all' || f.orient===filter);
+  if (!visible.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;font-size:11px;color:var(--text-dim);padding:24px 0;">Belum ada frame</div>`;
+    return;
+  }
+  visible.forEach(frame => {
+    const isActive = S.activeFrame?.id === frame.id;
+    const card = document.createElement('div');
+    card.className = 'frame-thumb-card' + (frame.orient==='landscape'?' landscape':'') + (isActive?' active':'');
+    card.style.background = '#111';
+    const img = document.createElement('img');
+    img.src = frame.thumb || frame.src;
+    img.alt = frame.name;
+    img.loading = 'lazy';
+    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+    card.appendChild(img);
+    const nameEl = document.createElement('div');
+    nameEl.className = 'card-name';
+    nameEl.textContent = frame.name;
+    card.appendChild(nameEl);
+    card.addEventListener('click', () => applyFrame(frame));
+    grid.appendChild(card);
+  });
 }
 
 // ─── EXPOSE ──────────────────────────────────────────────────
