@@ -632,12 +632,38 @@
 }
 
 /* ── Mobile ── */
+
+/* Sembunyikan di desktop, tampilkan di mobile */
+.touch-mode-btn { display: none; }
+
+@media (max-width: 767px) {
+  .touch-mode-btn {
+    display: flex;
+    background: var(--bg3);
+    border: 1px solid var(--border-gold);
+    color: var(--gold);
+    font-size: 12px;
+    min-width: 80px;
+  }
+  .touch-mode-btn.frame-mode {
+    background: var(--gold-glow);
+    border-color: var(--gold);
+    color: var(--gold-light);
+  }
+}
+
 @media (max-width: 767px) {
   :root {
     --panel-w: 0px;
     --topbar-h: 48px;
   }
-
+  /* Prevent browser page zoom on canvas stage */
+.canvas-stage {
+  touch-action: none;
+}
+.composite-wrap {
+  touch-action: none;
+}
   /* Topbar */
   .topbar { padding: 0 8px; gap: 6px; }
   .topbar-title { display: none; }

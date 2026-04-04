@@ -2,7 +2,7 @@
 <html lang="id">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Frame — Bali Sadhu Photo</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/frame.css">
@@ -91,6 +91,10 @@
         </button>
         <button class="tool-btn" id="btnZoomFit">Fit</button>
       </div>
+      <!-- Tambah setelah btnZoomFit, hanya visible di mobile -->
+<button class="tool-btn touch-mode-btn" id="btnTouchMode" title="Mode Sentuh">
+  🔍 Pan
+</button>
 
       <div class="toolbar-center" id="canvasSizeLabel">— × — px</div>
 

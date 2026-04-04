@@ -32,12 +32,14 @@ const S = {
   frameOffY: 0,
   frameScale: 1,
   frameOpacity: 1,
-  frameRotate: 0,    // degrees
+  frameRotate: 0,
   frameFlipH: false,
   frameFlipV: false,
 
   frames: [],
   filterOrient: 'all',
+  
+  touchMode: 'pan', // ← TAMBAHKAN INI (baris baru di paling bawah sebelum closing })
 };
 
 // ─── BALI/HINDU ORNAMENTAL DEFAULT FRAMES ────────────────────
@@ -692,6 +694,7 @@ const loadingOverlay= document.getElementById('loadingOverlay');
   setupAdjust();
   setupBackground();
   setupFrameBottomSheet();
+    setupTouchModeToggle();
   initDefaultFrames();
   loadFramesFromServer();
   injectTransformPanel();
@@ -953,6 +956,8 @@ function applyFrame(frame) {
     S.frameOffX    = 0; S.frameOffY = 0;
     S.frameScale   = 1; S.frameOpacity = 1;
     S.frameRotate  = 0; S.frameFlipH = false; S.frameFlipV = false;
+    S.touchMode = 'pan';
+      updateTouchModeBtn();
 
     setSlider('slOpacity', 100, 'valOpacity', '100%');
     const fbsOp = document.getElementById('fbsSlOpacity'); if(fbsOp) fbsOp.value = 100;
@@ -987,6 +992,8 @@ const fbsSV = document.getElementById('fbsValScale');   if(fbsSV) fbsSV.textCont
 
 function removeActiveFrame() {
   S.activeFrame = null;
+   S.touchMode = 'pan';
+  updateTouchModeBtn();
   const infoBar = document.getElementById('activeFrameInfo');
   if (infoBar) infoBar.style.display = 'none';
   toggleAdjustPanel(false);
@@ -1052,28 +1059,159 @@ function refreshFrameStyle() {
 
 // ─── DRAG ────────────────────────────────────────────────────
 function setupFrameDrag(el) {
-  let dragging=false, sx, sy, sox, soy;
-  el.addEventListener('mousedown', e => { dragging=true; sx=e.clientX; sy=e.clientY; sox=S.frameOffX; soy=S.frameOffY; el.style.cursor='grabbing'; e.preventDefault(); });
-  el.addEventListener('touchstart', e => { dragging=true; const t=e.touches[0]; sx=t.clientX; sy=t.clientY; sox=S.frameOffX; soy=S.frameOffY; e.preventDefault(); }, {passive:false});
-  document.addEventListener('mousemove', e => { if(!dragging) return; const dz=1/S.zoom; S.frameOffX=sox+(e.clientX-sx)*dz; S.frameOffY=soy+(e.clientY-sy)*dz; refreshFrameStyle(); });
-  document.addEventListener('touchmove', e => { if(!dragging) return; const t=e.touches[0],dz=1/S.zoom; S.frameOffX=sox+(t.clientX-sx)*dz; S.frameOffY=soy+(t.clientY-sy)*dz; refreshFrameStyle(); e.preventDefault(); }, {passive:false});
-  const stop = () => { dragging=false; if(el) el.style.cursor='grab'; };
-  document.addEventListener('mouseup', stop); document.addEventListener('touchend', stop);
+  let dragging = false, sx, sy, sox, soy;
+
+  // Mouse (desktop) — tetap sama seperti sebelumnya
+  el.addEventListener('mousedown', e => {
+    dragging = true; sx = e.clientX; sy = e.clientY;
+    sox = S.frameOffX; soy = S.frameOffY;
+    el.style.cursor = 'grabbing';
+    e.preventDefault();
+  });
+
+  // Touch (mobile) — hanya aktif kalau mode moveFrame
+  el.addEventListener('touchstart', e => {
+    if (S.touchMode !== 'moveFrame') return; // ← kunci utama
+    dragging = true;
+    const t = e.touches[0];
+    sx = t.clientX; sy = t.clientY;
+    sox = S.frameOffX; soy = S.frameOffY;
+    e.stopPropagation(); // jangan bubble ke canvasStage
+    e.preventDefault();
+  }, { passive: false });
+
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    const dz = 1 / S.zoom;
+    S.frameOffX = sox + (e.clientX - sx) * dz;
+    S.frameOffY = soy + (e.clientY - sy) * dz;
+    refreshFrameStyle();
+  });
+
+  document.addEventListener('touchmove', e => {
+    if (!dragging || S.touchMode !== 'moveFrame') return;
+    const t = e.touches[0], dz = 1 / S.zoom;
+    S.frameOffX = sox + (t.clientX - sx) * dz;
+    S.frameOffY = soy + (t.clientY - sy) * dz;
+    refreshFrameStyle();
+    e.preventDefault();
+  }, { passive: false });
+
+  const stop = () => { dragging = false; if (el) el.style.cursor = 'grab'; };
+  document.addEventListener('mouseup', stop);
+  document.addEventListener('touchend', stop);
+}
+
+
+// setup button mobile
+function setupTouchModeToggle() {
+  const btn = document.getElementById('btnTouchMode');
+  if (!btn) return;
+
+  // Sembunyikan kalau tidak ada frame aktif
+  updateTouchModeBtn();
+
+  btn.addEventListener('click', () => {
+    S.touchMode = S.touchMode === 'pan' ? 'moveFrame' : 'pan';
+    updateTouchModeBtn();
+  });
+}
+
+function updateTouchModeBtn() {
+  const btn = document.getElementById('btnTouchMode');
+  if (!btn) return;
+
+  // Hanya tampil kalau ada frame aktif DAN di mobile
+  const isMobile = window.innerWidth <= 767;
+  btn.style.display = (S.activeFrame && isMobile) ? 'flex' : 'none';
+
+  if (S.touchMode === 'moveFrame') {
+    btn.textContent = '🖼 Move Frame';
+    btn.classList.add('frame-mode');
+  } else {
+    btn.textContent = '🔍 Pan / Zoom';
+    btn.classList.remove('frame-mode');
+  }
 }
 
 // ─── ZOOM & PAN ──────────────────────────────────────────────
 function setupZoom() {
-  const btnIn=document.getElementById('btnZoomIn'), btnOut=document.getElementById('btnZoomOut'), btnFit=document.getElementById('btnZoomFit');
-  if (btnIn)  btnIn.addEventListener('click', () => setZoom(S.zoom*1.2));
-  if (btnOut) btnOut.addEventListener('click', () => setZoom(S.zoom/1.2));
+  const btnIn  = document.getElementById('btnZoomIn');
+  const btnOut = document.getElementById('btnZoomOut');
+  const btnFit = document.getElementById('btnZoomFit');
+  if (btnIn)  btnIn.addEventListener('click',  () => setZoom(S.zoom * 1.2));
+  if (btnOut) btnOut.addEventListener('click', () => setZoom(S.zoom / 1.2));
   if (btnFit) btnFit.addEventListener('click', fitToScreen);
-  if (canvasStage) {
-    canvasStage.addEventListener('wheel', e => { e.preventDefault(); setZoom(S.zoom*(e.deltaY>0?0.9:1.1)); }, {passive:false});
-    let panning=false,px,py,ppx,ppy;
-    canvasStage.addEventListener('mousedown', e => { if(e.button===1||e.altKey){panning=true;px=e.clientX;py=e.clientY;ppx=S.panX;ppy=S.panY;e.preventDefault();} });
-    document.addEventListener('mousemove', e => { if(!panning) return; S.panX=ppx+(e.clientX-px); S.panY=ppy+(e.clientY-py); applyStageTransform(); });
-    document.addEventListener('mouseup', () => { panning=false; });
+
+  if (!canvasStage) return;
+
+  // Mouse wheel zoom
+  canvasStage.addEventListener('wheel', e => {
+    e.preventDefault();
+    setZoom(S.zoom * (e.deltaY > 0 ? 0.9 : 1.1));
+  }, { passive: false });
+
+  // Mouse pan (alt/middle button)
+  let panning = false, px, py, ppx, ppy;
+  canvasStage.addEventListener('mousedown', e => {
+    if (e.button === 1 || e.altKey) {
+      panning = true;
+      px = e.clientX; py = e.clientY;
+      ppx = S.panX;   ppy = S.panY;
+      e.preventDefault();
+    }
+  });
+  document.addEventListener('mousemove', e => {
+    if (!panning) return;
+    S.panX = ppx + (e.clientX - px);
+    S.panY = ppy + (e.clientY - py);
+    applyStageTransform();
+  });
+  document.addEventListener('mouseup', () => { panning = false; });
+
+  // ─── TOUCH: pinch zoom + single-finger pan ───────────────
+  let _t1x, _t1y, _tpx, _tpy, _lastDist = 0;
+
+canvasStage.addEventListener('touchstart', e => {
+  // Kalau ada frame aktif dan mode moveFrame → skip pan, biarkan frameDragEl handle
+  if (S.activeFrame && S.touchMode === 'moveFrame') return;
+  e.preventDefault();
+  if (e.touches.length === 1) {
+    _t1x = e.touches[0].clientX;
+    _t1y = e.touches[0].clientY;
+    _tpx = S.panX;
+    _tpy = S.panY;
+  } else if (e.touches.length === 2) {
+    const dx = e.touches[0].clientX - e.touches[1].clientX;
+    const dy = e.touches[0].clientY - e.touches[1].clientY;
+    _lastDist = Math.sqrt(dx * dx + dy * dy);
   }
+}, { passive: false });
+
+  canvasStage.addEventListener('touchmove', e => {
+    e.preventDefault();
+    if (e.touches.length === 1) {
+      // single finger pan
+      const dx = e.touches[0].clientX - _t1x;
+      const dy = e.touches[0].clientY - _t1y;
+      S.panX = _tpx + dx;
+      S.panY = _tpy + dy;
+      applyStageTransform();
+    } else if (e.touches.length === 2) {
+      // pinch zoom
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      if (_lastDist > 0) {
+        setZoom(S.zoom * (dist / _lastDist));
+      }
+      _lastDist = dist;
+    }
+  }, { passive: false });
+
+  canvasStage.addEventListener('touchend', e => {
+    _lastDist = 0;
+  }, { passive: true });
 }
 
 function setZoom(z) { S.zoom=Math.max(0.05,Math.min(8,z)); applyStageTransform(); }
@@ -1186,6 +1324,7 @@ function handleFrameFile(file) {
   showToast('⏳ Memproses frame…');
 
   // Gunakan Object URL (lebih cepat dari base64)
+  
   const objectUrl = URL.createObjectURL(file);
   const img = new Image();
 
@@ -1228,7 +1367,7 @@ function handleFrameFile(file) {
 
   img.onerror = () => {
     URL.revokeObjectURL(objectUrl);
-    showToast('❌ File PNG tidak valid atau tidak bisa dibaca');
+    showToast('❌ File PNG tidak valid atau tidak bisa dibaca');  
   };
 
   // Trigger load
