@@ -167,6 +167,5 @@ function createThumbnail(string $src, string $dest, int $tw, int $th): void {
     imagecopyresampled($dstImg, $srcImg, 0, 0, 0, 0, $newW, $newH, $sw, $sh);
     imagepng($dstImg, $dest, 6);
 
-    imagedestroy($srcImg);
-    imagedestroy($dstImg);
+   unset($srcImg, $dstImg);
 }

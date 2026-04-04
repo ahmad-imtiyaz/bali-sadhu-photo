@@ -10,7 +10,7 @@
 <body>
 
 <header class="topbar">
-  <button class="btn-back" onclick="window.location.href='frame.php'" title="Kembali ke Frame">
+  <button class="btn-back" id="btnBack" title="Kembali ke Frame">
     <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
       <path d="M10 3L5 8L10 13" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
     </svg>
@@ -31,7 +31,7 @@
     <div class="step active"><div class="step-num">4</div><span class="step-label">Print & Share</span></div>
   </div>
 
-  <button class="btn-new" onclick="window.location.href='index.php'">
+  <button class="btn-new" id="btnNew">
     <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
       <path d="M6.5 1v11M1 6.5h11" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
     </svg>
@@ -67,7 +67,7 @@
 
     <!-- ── Print ── -->
     <div class="action-card" id="cardPrint">
-      <div class="action-card-header" onclick="toggleCard('Print')">
+      <div class="action-card-header">
         <div class="action-icon print-icon">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M5 7V3h10v4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
@@ -88,9 +88,9 @@
           <div class="print-opt-row">
             <span class="print-opt-label">Jumlah kopian</span>
             <div class="qty-ctrl">
-              <button class="qty-btn" onclick="changeCopy(-1)">−</button>
+              <button class="qty-btn" id="btnMinus">−</button>
               <span id="copyCount">1</span>
-              <button class="qty-btn" onclick="changeCopy(1)">+</button>
+              <button class="qty-btn" id="btnPlus">+</button>
             </div>
           </div>
           <div class="print-opt-row">
@@ -102,7 +102,7 @@
             </select>
           </div>
         </div>
-        <button class="btn-action btn-print" onclick="doPrint()">
+        <button class="btn-action btn-print" id="btnPrint">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M3 5V2h8v3M1 5h12v6H1z" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
@@ -113,7 +113,7 @@
 
     <!-- ── Download ── -->
     <div class="action-card" id="cardDownload">
-      <div class="action-card-header" onclick="toggleCard('Download')">
+      <div class="action-card-header">
         <div class="action-icon download-icon">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 3v10M6 9l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -130,17 +130,16 @@
       </div>
       <div class="action-body" id="bodyDownload">
         <div class="format-btns">
-          <button class="fmt-btn active" data-fmt="png" onclick="selectFmt(this,'png')">PNG</button>
-          <button class="fmt-btn" data-fmt="jpg" onclick="selectFmt(this,'jpg')">JPEG</button>
-          <button class="fmt-btn" data-fmt="webp" onclick="selectFmt(this,'webp')">WebP</button>
+          <button class="fmt-btn active" data-fmt="png">PNG</button>
+          <button class="fmt-btn" data-fmt="jpg">JPEG</button>
+          <button class="fmt-btn" data-fmt="webp">WebP</button>
         </div>
         <div class="quality-row" id="qualityRow" style="display:none;">
           <span class="print-opt-label">Kualitas</span>
-          <input type="range" id="slQuality" min="60" max="100" value="92"
-                 oninput="document.getElementById('valQuality').textContent=this.value+'%'">
+          <input type="range" id="slQuality" min="60" max="100" value="92">
           <span id="valQuality" class="slider-val-sm">92%</span>
         </div>
-        <button class="btn-action btn-download" onclick="doDownload()">
+        <button class="btn-action btn-download" id="btnDownload">
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M7 2v8M4 7l3 3 3-3M2 12h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
           </svg>
@@ -151,7 +150,7 @@
 
     <!-- ── WhatsApp ── -->
     <div class="action-card" id="cardWa">
-      <div class="action-card-header" onclick="toggleCard('Wa')">
+      <div class="action-card-header">
         <div class="action-icon wa-icon">
           <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
             <path d="M10 2C5.58 2 2 5.58 2 10c0 1.56.44 3.01 1.2 4.25L2 18l3.88-1.17A7.94 7.94 0 0010 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" stroke="currentColor" stroke-width="1.5"/>
@@ -171,14 +170,14 @@
 
         <!-- Sub-tabs -->
         <div class="wa-tabs">
-          <button class="wa-tab active" data-watab="contacts" onclick="switchWaTab('contacts')">
+          <button class="wa-tab active" data-watab="contacts">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
               <circle cx="6" cy="4" r="2.2" stroke="currentColor" stroke-width="1.1"/>
               <path d="M1.5 11c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/>
             </svg>
             Kontak
           </button>
-          <button class="wa-tab" data-watab="add" onclick="switchWaTab('add')">
+          <button class="wa-tab" data-watab="add">
             <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
               <path d="M6 1v10M1 6h10" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
@@ -194,8 +193,7 @@
               <circle cx="5" cy="5" r="3.5" stroke="currentColor" stroke-width="1.2"/>
               <path d="M8 8l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
             </svg>
-            <input type="text" id="waSearch" class="wa-search-input" placeholder="Cari nama atau nomor…"
-                   oninput="filterContacts()">
+            <input type="text" id="waSearch" class="wa-search-input" placeholder="Cari nama atau nomor…">
           </div>
 
           <div class="wa-contacts-list" id="waContactsList">
@@ -205,24 +203,22 @@
                 <path d="M4 26c0-5.5 4.5-9 10-9s10 3.5 10 9" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
               </svg>
               <span>Belum ada kontak tersimpan</span>
-              <button class="wa-add-btn-inline" onclick="switchWaTab('add')">+ Tambah kontak baru</button>
+              <button class="wa-add-btn-inline" id="btnAddTabInline">+ Tambah kontak baru</button>
             </div>
           </div>
 
-          <!-- Panel kirim — muncul saat kontak dipilih -->
+          <!-- Panel kirim -->
           <div class="wa-send-panel" id="waSendPanel" style="display:none;">
-            <div class="wa-selected-badge" id="waSelectedBadge">
-              <!-- diisi JS -->
-            </div>
+            <div class="wa-selected-badge" id="waSelectedBadge"></div>
             <div class="wa-format-row">
               <span class="wa-format-label">Format gambar</span>
               <div class="wa-format-btns">
-                <button class="wa-fmt-btn active" data-wafmt="png" onclick="selectWaFmt(this,'png')">PNG</button>
-                <button class="wa-fmt-btn" data-wafmt="jpg" onclick="selectWaFmt(this,'jpg')">JPEG</button>
-                <button class="wa-fmt-btn" data-wafmt="webp" onclick="selectWaFmt(this,'webp')">WebP</button>
+                <button class="wa-fmt-btn active" data-wafmt="png">PNG</button>
+                <button class="wa-fmt-btn" data-wafmt="jpg">JPEG</button>
+                <button class="wa-fmt-btn" data-wafmt="webp">WebP</button>
               </div>
             </div>
-            <button class="btn-action btn-wa" id="btnSendWa" onclick="doSendWa()">
+            <button class="btn-action btn-wa" id="btnSendWa">
               <svg width="14" height="14" viewBox="0 0 20 20" fill="none">
                 <path d="M10 2C5.58 2 2 5.58 2 10c0 1.56.44 3.01 1.2 4.25L2 18l3.88-1.17A7.94 7.94 0 0010 18c4.42 0 8-3.58 8-8s-3.58-8-8-8z" stroke="currentColor" stroke-width="1.5"/>
               </svg>
@@ -243,12 +239,10 @@
               <label class="wa-field-label">Nomor WhatsApp <span style="color:var(--gold)">*</span></label>
               <div class="wa-phone-wrap">
                 <span class="wa-prefix">+62</span>
-                <input type="tel" id="addPhone" class="wa-input wa-phone-input"
-                       placeholder="812 3456 7890"
-                       onkeydown="if(event.key==='Enter') doAddContact()">
+                <input type="tel" id="addPhone" class="wa-input wa-phone-input" placeholder="812 3456 7890">
               </div>
             </div>
-            <button class="btn-action btn-add-contact" onclick="doAddContact()">
+            <button class="btn-action btn-add-contact" id="btnAddContact">
               Simpan Kontak
             </button>
           </div>
@@ -260,10 +254,15 @@
   </div><!-- /actions-panel -->
 </div><!-- /print-layout -->
 
-<!-- Print frame — hanya tampil saat @media print -->
+<!-- Print frame -->
 <div id="printFrame" class="print-only"></div>
 
 <div id="toast"></div>
 <script src="js/print.js"></script>
+<script>
+  // Navigation — tidak bisa pakai onclick karena CSP
+  document.getElementById('btnBack')?.addEventListener('click', () => { window.location.href = 'frame.php'; });
+  document.getElementById('btnNew')?.addEventListener('click',  () => { window.location.href = 'index.php'; });
+</script>
 </body>
 </html>
