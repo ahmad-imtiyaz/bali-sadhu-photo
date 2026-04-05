@@ -20,6 +20,8 @@ const PRINT_SIZES = [
 const state = {
   originalImage: null,
   trueOriginalImage: null,
+  previewImage: null,
+  previewScale: 1,
   fileName: '',
   fileSize: 0,
   fileType: '',
@@ -45,7 +47,7 @@ const state = {
 // ─── HISTORY ──────────────────────────────────────────────
 const history = { stack: [], pointer: -1, _saving: false };
 
-function snapshotState() {
+function snapshotState(includeImage = false) {
   return {
     brightness: state.brightness, contrast: state.contrast,
     saturation: state.saturation, warmth: state.warmth,
@@ -56,7 +58,7 @@ function snapshotState() {
     rotation: state.rotation, flipH: state.flipH, flipV: state.flipV,
     activeFilter: state.activeFilter,
     cropSizeId: state.cropSizeId, cropOrientation: state.cropOrientation,
-    imageDataURL: state.originalImage ? imageToDataURL(state.originalImage) : null,
+    imageDataURL: includeImage && state.originalImage ? imageToDataURL(state.originalImage) : null,
   };
 }
 
@@ -69,10 +71,10 @@ function imageToDataURL(img) {
   return tmp.toDataURL('image/png');
 }
 
-function pushHistory() {
+function pushHistory(includeImage = false) {
   if (history._saving) return;
   history.stack.splice(history.pointer + 1);
-  history.stack.push(snapshotState());
+  history.stack.push(snapshotState(includeImage));
   history.pointer = history.stack.length - 1;
   updateUndoRedoBtns();
 }
@@ -311,18 +313,45 @@ function redirectToIndex() {
  */
 function loadImageFromSrc(src, onLoad, onError) {
   const img = new Image();
-  /* TIDAK ada img.crossOrigin — ini sengaja dihapus */
-  img.onload  = () => { if (typeof onLoad  === 'function') onLoad(img); };
+  img.onload  = () => {
+    console.log('Image loaded:', img.naturalWidth, img.naturalHeight); // cek ini
+    if (typeof onLoad === 'function') onLoad(img);
+  };
   img.onerror = () => { if (typeof onError === 'function') onError(); };
   img.src = src;
 }
 
-function onImageReady(img) {
-  state.originalImage = img; state.trueOriginalImage = img;
-  canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
+async function onImageReady(img) {
+  state.trueOriginalImage = img;
+  state.previewImage = await createPreviewImage(img);  // tunggu sampai selesai
+  state.originalImage = state.previewImage;
+  state.previewScale = state.previewImage.naturalWidth / img.naturalWidth;
+
+  canvas.width  = state.previewImage.naturalWidth;
+  canvas.height = state.previewImage.naturalHeight;
   setDetailText('info-dimensions', `${img.naturalWidth} × ${img.naturalHeight}`);
   setZoomFit(); renderCanvas(); drawHistogram();
-  setupFilters(); updateInfoPanel(); updateCropSizeInfo(); pushHistory();
+  setupFilters(); updateInfoPanel(); updateCropSizeInfo(); pushHistory(true);
+}
+
+function createPreviewImage(img) {
+  const MAX = 1400;
+  const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
+  console.log('createPreviewImage called, scale:', scale, img.naturalWidth, img.naturalHeight);
+  if (scale >= 1) return Promise.resolve(img);
+
+  const tmp = document.createElement('canvas');
+  tmp.width  = Math.round(img.naturalWidth  * scale);
+  tmp.height = Math.round(img.naturalHeight * scale);
+  const tc = tmp.getContext('2d');
+  tc.imageSmoothingEnabled = true; tc.imageSmoothingQuality = 'high';
+  tc.drawImage(img, 0, 0, tmp.width, tmp.height);
+
+  return new Promise((resolve) => {
+    const preview = new Image();
+    preview.onload = () => resolve(preview);
+    preview.src = tmp.toDataURL('image/jpeg', 0.92);
+  });
 }
 
 function showLoadingOverlay(show) {
@@ -542,9 +571,10 @@ function setupToolbarButtons() {
 }
 
 // ─── RESET ────────────────────────────────────────────────
-function resetToTrueOriginal() {
+async function resetToTrueOriginal() {
   if (!state.trueOriginalImage) return;
   if (!window.confirm('Reset akan mengembalikan foto ke kondisi awal. Lanjutkan?')) return;
+
   ['brightness','contrast','saturation','warmth','exposure','highlights','shadows',
    'hue','tint','vibrance','sharpness','vignette','noise','blur'].forEach(k=>{
     state[k]=0; const sl=document.getElementById(`sl-${k}`);if(sl)sl.value=0;
@@ -552,8 +582,11 @@ function resetToTrueOriginal() {
   });
   state.rotation=0;state.flipH=false;state.flipV=false;state.activeFilter='none';
   state.cropSizeId='4R';state.cropOrientation='portrait';
-  state.originalImage=state.trueOriginalImage;
-  canvas.width=state.trueOriginalImage.naturalWidth; canvas.height=state.trueOriginalImage.naturalHeight;
+  state.previewImage  = await createPreviewImage(state.trueOriginalImage);
+  state.originalImage = state.previewImage;
+  state.previewScale  = state.previewImage.naturalWidth / state.trueOriginalImage.naturalWidth;
+  canvas.width  = state.previewImage.naturalWidth;
+  canvas.height = state.previewImage.naturalHeight;
   document.querySelectorAll('.filter-item').forEach(el=>el.classList.remove('active'));
   document.querySelector('.filter-item[data-id="none"]')?.classList.add('active');
   document.querySelectorAll('.crop-preset-btn').forEach(b=>b.classList.toggle('active',b.dataset.id==='4R'));
@@ -641,20 +674,33 @@ function updateCropSizeInfo() {
 }
 
 function applyAutoCrop() {
-  if (!state.originalImage) return;
-  const {rw,rh}=getCropRatio(), srcW=state.originalImage.naturalWidth, srcH=state.originalImage.naturalHeight;
-  const targetRatio=rw/rh, currentRatio=srcW/srcH;
+  
+  if (!state.trueOriginalImage) return;
+  const {rw,rh} = getCropRatio();
+  const src = state.trueOriginalImage;
+  const srcW = src.naturalWidth, srcH = src.naturalHeight;
+  const targetRatio = rw/rh, currentRatio = srcW/srcH;
   let cropW,cropH,cropX,cropY;
-  if(currentRatio>targetRatio){cropH=srcH;cropW=Math.round(srcH*targetRatio);cropX=Math.round((srcW-cropW)/2);cropY=0;}
-  else{cropW=srcW;cropH=Math.round(srcW/targetRatio);cropX=0;cropY=Math.round((srcH-cropH)/2);}
-  const tmp=document.createElement('canvas');tmp.width=cropW;tmp.height=cropH;
-  const tc=tmp.getContext('2d');tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
-  tc.drawImage(state.originalImage,cropX,cropY,cropW,cropH,0,0,cropW,cropH);
-  loadImageFromSrc(tmp.toDataURL('image/png'),(newImg)=>{
-    state.originalImage=newImg;canvas.width=cropW;canvas.height=cropH;
-    scheduleRender();setDetailText('info-dimensions',`${cropW} × ${cropH}`);
+  if (currentRatio > targetRatio) {
+    cropH=srcH; cropW=Math.round(srcH*targetRatio);
+    cropX=Math.round((srcW-cropW)/2); cropY=0;
+  } else {
+    cropW=srcW; cropH=Math.round(srcW/targetRatio);
+    cropX=0; cropY=Math.round((srcH-cropH)/2);
+  }
+  const tmp=document.createElement('canvas'); tmp.width=cropW; tmp.height=cropH;
+  const tc=tmp.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high';
+  tc.drawImage(src, cropX,cropY,cropW,cropH, 0,0,cropW,cropH);
+ loadImageFromSrc(tmp.toDataURL('image/png'), async (newFullRes) => {
+    state.trueOriginalImage = newFullRes;
+    state.previewImage = await createPreviewImage(newFullRes); // ← await
+    state.originalImage = state.previewImage;
+    state.previewScale = state.previewImage.naturalWidth / newFullRes.naturalWidth;
+    canvas.width  = state.previewImage.naturalWidth;
+    canvas.height = state.previewImage.naturalHeight;
+    setDetailText('info-dimensions', `${cropW} × ${cropH}`);
     showToast(`Auto crop ${getActivePrintSize().label} berhasil ✓`);
-    cancelCrop();setZoomFit();setupFilters();pushHistory();
+    cancelCrop(); setZoomFit(); scheduleRender(); setupFilters(); pushHistory(true);
   });
 }
 
@@ -707,24 +753,33 @@ function onCropMove(e) {
 
 /* MANUAL CROP FIX — crop dari originalImage resolusi penuh */
 function applyManualCrop() {
-  if (!state.originalImage) return;
-  const wRect=canvasWrapper.getBoundingClientRect(), cRect=canvas.getBoundingClientRect();
-  const srcW=canvas.width, srcH=canvas.height;
-  const scaleX=srcW/cRect.width, scaleY=srcH/cRect.height;
-  const relX=cropRect.x-(cRect.left-wRect.left), relY=cropRect.y-(cRect.top-wRect.top);
-  const safeX=Math.max(0,Math.round(relX*scaleX)), safeY=Math.max(0,Math.round(relY*scaleY));
-  const safeW=Math.min(Math.round(cropRect.w*scaleX),srcW-safeX);
-  const safeH=Math.min(Math.round(cropRect.h*scaleY),srcH-safeY);
-  if(safeW<10||safeH<10){showToast('Area crop terlalu kecil!');return;}
-
-  const tmp=document.createElement('canvas');tmp.width=safeW;tmp.height=safeH;
-  const tc=tmp.getContext('2d');tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';
-  tc.drawImage(state.originalImage,safeX,safeY,safeW,safeH,0,0,safeW,safeH);
-  loadImageFromSrc(tmp.toDataURL('image/png'),(newImg)=>{
-    state.originalImage=newImg;canvas.width=safeW;canvas.height=safeH;
-    setDetailText('info-dimensions',`${safeW} × ${safeH}`);
+  if (!state.trueOriginalImage) return;
+  const wRect = canvasWrapper.getBoundingClientRect();
+  const cRect = canvas.getBoundingClientRect();
+  const fullW = state.trueOriginalImage.naturalWidth;
+  const fullH = state.trueOriginalImage.naturalHeight;
+  const scaleX = fullW / cRect.width;
+  const scaleY = fullH / cRect.height;
+  const relX = cropRect.x - (cRect.left - wRect.left);
+  const relY = cropRect.y - (cRect.top  - wRect.top);
+  const safeX = Math.max(0, Math.round(relX * scaleX));
+  const safeY = Math.max(0, Math.round(relY * scaleY));
+  const safeW = Math.min(Math.round(cropRect.w * scaleX), fullW - safeX);
+  const safeH = Math.min(Math.round(cropRect.h * scaleY), fullH - safeY);
+  if (safeW < 10 || safeH < 10) { showToast('Area crop terlalu kecil!'); return; }
+  const tmp=document.createElement('canvas'); tmp.width=safeW; tmp.height=safeH;
+  const tc=tmp.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high';
+  tc.drawImage(state.trueOriginalImage, safeX,safeY,safeW,safeH, 0,0,safeW,safeH);
+  loadImageFromSrc(tmp.toDataURL('image/png'), (newFullRes) => {
+    state.trueOriginalImage = newFullRes;
+    state.previewImage = createPreviewImage(newFullRes);
+    state.originalImage = state.previewImage;
+    state.previewScale = state.previewImage.naturalWidth / newFullRes.naturalWidth;
+    canvas.width  = state.previewImage.naturalWidth;
+    canvas.height = state.previewImage.naturalHeight;
+    setDetailText('info-dimensions', `${safeW} × ${safeH}`);
     showToast('Manual crop berhasil ✓');
-    cancelCrop();setZoomFit();scheduleRender();setupFilters();pushHistory();
+    cancelCrop(); setZoomFit(); scheduleRender(); setupFilters(); pushHistory();
   });
 }
 
@@ -759,41 +814,63 @@ function updateInfoPanel() {
 
 // ─── GO TO FRAME — FIX FILE BESAR ────────────────────────────
 async function goToFrame() {
-  if (!state.originalImage) return;
-
+  if (!state.trueOriginalImage) return;
   const btnNext = document.getElementById('btnNextFrame');
   if (btnNext) { btnNext.disabled = true; btnNext.textContent = 'Menyiapkan…'; }
-
-  showToast('Menyiapkan gambar untuk frame…');
-
+  showToast('Merender full-res untuk frame…');
   try {
-    // ── 1. Render canvas ke Blob (tidak lewat string base64 raksasa) ──
-    const blob = await canvasToBlob(canvas, state.fileType);
-
-    // ── 2. Upload Blob ke server ──────────────────────────────────────
+    const fullResCanvas = renderToFullResCanvas();
+    const blob = await canvasToBlob(fullResCanvas, state.fileType);
     const path = await uploadEditedBlob(blob, state.photoId, state.fileType);
-
-    // ── 3. Simpan path (bukan base64) ke sessionStorage ──────────────
     sessionStorage.setItem('bsp_editedPath', path);
-    // Hapus bsp_editedSrc lama agar frame.js tidak salah ambil base64
     sessionStorage.removeItem('bsp_editedSrc');
-
-    // Metadata lain tetap dibutuhkan frame.js
-    sessionStorage.setItem('bsp_imageName',   state.fileName);
-    sessionStorage.setItem('bsp_cropSizeId',  state.cropSizeId);
-    sessionStorage.setItem('bsp_cropOrient',  state.cropOrientation);
-
-    // ── 4. Simpan state edit ke server (opsional) ─────────────────────
+    sessionStorage.setItem('bsp_imageName',  state.fileName);
+    sessionStorage.setItem('bsp_cropSizeId', state.cropSizeId);
+    sessionStorage.setItem('bsp_cropOrient', state.cropOrientation);
     await saveSessionToServer('ready_for_frame');
-
-    // ── 5. Navigasi ke frame.php ──────────────────────────────────────
     window.location.href = 'frame.php';
-
   } catch (err) {
     console.error('[goToFrame] Error:', err);
-    showToast('❌ Gagal: ' + (err.message || 'Upload error'));
+    showToast('❌ Gagal: ' + (err.message || 'Error'));
     if (btnNext) { btnNext.disabled = false; btnNext.textContent = 'Next: Frames'; }
   }
+}
+
+function renderToFullResCanvas() {
+  const img  = state.trueOriginalImage;
+  const srcW = img.naturalWidth, srcH = img.naturalHeight;
+  const off    = new OffscreenCanvas(srcW, srcH);
+  const offCtx = off.getContext('2d', { willReadFrequently: true });
+  offCtx.imageSmoothingEnabled = true; offCtx.imageSmoothingQuality = 'high';
+  offCtx.drawImage(img, 0, 0);
+  let id = offCtx.getImageData(0, 0, srcW, srcH);
+  id = applyPixelAdjustments(id);
+  offCtx.putImageData(id, 0, 0);
+  if (state.blur > 0) applyBlur(offCtx, srcW, srcH, state.blur * 0.5);
+  if (state.vignette > 0) {
+    const grad = offCtx.createRadialGradient(
+      srcW/2,srcH/2, Math.min(srcW,srcH)*0.25,
+      srcW/2,srcH/2, Math.max(srcW,srcH)*0.85
+    );
+    grad.addColorStop(0,'rgba(0,0,0,0)');
+    grad.addColorStop(1,`rgba(0,0,0,${(state.vignette/100*0.9).toFixed(2)})`);
+    offCtx.fillStyle=grad; offCtx.fillRect(0,0,srcW,srcH);
+  }
+  applyFilterPreset(offCtx, srcW, srcH);
+  const rotated = (state.rotation===90||state.rotation===270);
+  const out = document.createElement('canvas');
+  out.width  = rotated ? srcH : srcW;
+  out.height = rotated ? srcW : srcH;
+  const outCtx = out.getContext('2d');
+  outCtx.imageSmoothingEnabled = true; outCtx.imageSmoothingQuality = 'high';
+  outCtx.save();
+  outCtx.translate(out.width/2, out.height/2);
+  outCtx.rotate(state.rotation * Math.PI / 180);
+  if (state.flipH) outCtx.scale(-1,1);
+  if (state.flipV) outCtx.scale(1,-1);
+  outCtx.drawImage(off, -srcW/2, -srcH/2);
+  outCtx.restore();
+  return out;
 }
 
 // ─── Helper: Canvas → Blob ────────────────────────────────────
