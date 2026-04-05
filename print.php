@@ -60,7 +60,7 @@
 
   <!-- RIGHT: Actions Panel -->
   <div class="actions-panel">
-
+      <div class="actions-scroll"> 
     <div class="panel-header">
       <h2 class="panel-title">Selesai! 🎉</h2>
       <p class="panel-subtitle">Pilih cara menggunakan foto kamu</p>
@@ -339,6 +339,7 @@
  
   </div>
 </div><!-- /cardQR -->
+  </div>
 
   </div><!-- /actions-panel -->
 </div><!-- /print-layout -->

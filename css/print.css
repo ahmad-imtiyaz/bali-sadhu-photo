@@ -90,7 +90,7 @@ body {
 .btn-new:hover { background: var(--gold-glow); }
 
 /* ── LAYOUT ── */
-.print-layout { flex: 1; display: flex; overflow: hidden; }
+.print-layout { flex: 1; display: flex; overflow: hidden; min-height: 0; }
 
 /* ── PREVIEW AREA ── */
 .preview-area {
@@ -133,7 +133,7 @@ body {
   background: var(--bg2);
   border-left: 1px solid var(--border);
   display: flex; flex-direction: column;
-  overflow-y: auto; overflow-x: hidden;
+  overflow: hidden;        /* ← ganti dari overflow-y: auto */
   flex-shrink: 0;
   scrollbar-width: thin;
   scrollbar-color: var(--bg4) transparent;
@@ -189,10 +189,9 @@ body {
   display: flex; flex-direction: column; gap: 10px;
 }
 .action-card.open .action-body {
-  max-height: 1200px;
+  max-height: 2000px;  /* ← naikkan */
   padding: 0 14px 14px;
 }
-
 /* ── PRINT OPTIONS ── */
 .print-options {
   display: flex; flex-direction: column; gap: 8px;
@@ -522,11 +521,11 @@ body {
   .btn-new { font-size: 11px; padding: 7px 10px; }
   .btn-back { width: 30px; height: 30px; }
 
-  .print-layout {
-    flex-direction: column;
-    overflow: auto;
-    height: calc(100vh - var(--topbar-h));
-  }
+.print-layout {
+  flex-direction: column;
+  overflow: visible;
+  min-height: calc(100vh - var(--topbar-h));
+}
 
   .preview-area {
     padding: 16px;
@@ -537,20 +536,20 @@ body {
   .preview-stage { max-height: calc(38vh - 48px); }
   .final-img { max-height: calc(38vh - 56px); }
 
-  .actions-panel {
-    border-left: none;
-    border-top: 1px solid var(--border);
-    width: 100%;
-    flex: 1;
-    overflow-y: auto;
-    overflow-x: hidden;
-  }
+ .actions-panel {
+  border-left: none;
+  border-top: 1px solid var(--border);
+  width: 100%;
+  flex: 1;
+  overflow-y: visible;
+  overflow-x: hidden;
+}
 
   .panel-header { padding: 14px 14px 0; }
   .panel-title { font-size: 18px; }
 
   .action-card { margin: 10px 10px 0; }
-  .action-card:last-child { margin-bottom: 80px; }
+  .action-card:last-child { margin-bottom: 120px; }
   .action-card-header { padding: 12px; min-height: 56px; }
   .action-icon { width: 34px; height: 34px; }
   .action-title { font-size: 13px; }
@@ -682,3 +681,13 @@ body {
   .qr-canvas-wrap canvas,
   .qr-canvas-wrap img { border-width: 10px; }
 }
+.actions-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bg4) transparent;
+}
+.actions-scroll::-webkit-scrollbar { width: 4px; }
+.actions-scroll::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 2px; }

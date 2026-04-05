@@ -42,7 +42,7 @@ function toggleCard(name) {
   const card = document.getElementById('card' + name);
   if (!card) return;
   const isOpen = card.classList.contains('open');
-  ['Print','Download','Wa'].forEach(n => {
+  ['Print','Download','Wa','QR'].forEach(n => {
     const c = document.getElementById('card' + n);
     if (c) c.classList.remove('open');
   });
