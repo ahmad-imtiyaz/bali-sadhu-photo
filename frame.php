@@ -42,7 +42,7 @@
     <div class="step-line"></div>
     <div class="step">
       <div class="step-num">4</div>
-      <span class="step-label">Print & Share</span>
+      <span class="step-label">Print &amp; Share</span>
     </div>
   </div>
 
@@ -62,15 +62,12 @@
   <!-- LEFT: Canvas Stage -->
   <div class="canvas-area">
     <div class="canvas-stage" id="canvasStage">
-
       <div class="loading-overlay" id="loadingOverlay">
         <div class="spinner"></div>
       </div>
-
       <div class="composite-wrap" id="compositeWrap" style="display:none;">
         <canvas id="photoCanvas"></canvas>
       </div>
-
     </div>
 
     <!-- Toolbar -->
@@ -83,12 +80,11 @@
         <button class="tool-btn" id="btnZoomIn" title="Perbesar">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1.5v10M1.5 6.5h10" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
         </button>
-        <button class="tool-btn" id="btnZoomFit" title="Sesuaikan layar">Fit</button>
-        <button class="tool-btn" id="btnZoom100" title="Zoom 100% ukuran asli">100%</button>
+        <button class="tool-btn" id="btnZoomFit">Fit</button>
+        <button class="tool-btn" id="btnZoom100">100%</button>
       </div>
-
       <div class="toolbar-right">
-        <button class="tool-btn" id="btnDownload" title="Download preview">
+        <button class="tool-btn" id="btnDownload">
           <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v8M3.5 7l3 3 3-3M1 11.5h11" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
           Download Preview
         </button>
@@ -96,27 +92,20 @@
     </div>
   </div>
 
-  <!-- RIGHT: Panel -->
+  <!-- RIGHT: Single Scroll Panel -->
   <div class="right-panel">
 
-    <div class="panel-tabs">
-      <button class="panel-tab active" data-tab="frames">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><rect x="3" y="3" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="0.9"/></svg>
-        Frames
-      </button>
-      <button class="panel-tab" data-tab="adjust">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><circle cx="3.5" cy="4" r="1.2" stroke="currentColor" stroke-width="1"/><circle cx="8.5" cy="8" r="1.2" stroke="currentColor" stroke-width="1"/><path d="M3.5 4h7M1 8h6" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        Adjust
-      </button>
-      <button class="panel-tab" data-tab="background">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><rect x="1" y="1" width="10" height="10" rx="1.5" fill="currentColor" opacity=".3"/><circle cx="6" cy="6" r="2.5" stroke="currentColor" stroke-width="1"/></svg>
-        Background
-      </button>
+    <div class="panel-header">
+      <svg width="14" height="14" viewBox="0 0 12 12" fill="none">
+        <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+        <rect x="3" y="3" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="0.9"/>
+      </svg>
+      Frames
     </div>
 
-    <!-- ── TAB: FRAMES ── -->
-    <div class="tab-content active" id="tab-frames">
+    <div class="panel-scroll">
 
+      <!-- ① UPLOAD FRAME -->
       <div class="upload-zone" id="uploadZone">
         <div class="upload-zone-icon">
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
@@ -125,135 +114,163 @@
           </svg>
         </div>
         <span class="upload-zone-title">Upload Frame PNG</span>
-        <span class="upload-zone-sub">Seret &amp; lepas file ke sini, atau klik tombol di bawah</span>
-        <span class="upload-zone-hint">Format: PNG transparan · Maks 8MB per file · Bisa multi-file</span>
+        <span class="upload-zone-sub">Seret &amp; lepas, atau klik tombol di bawah</span>
+        <span class="upload-zone-hint">PNG transparan · Maks 8MB · Multi-file</span>
         <span class="upload-zone-btn">Pilih File</span>
         <input type="file" id="frameFileInput" accept="image/png" hidden multiple>
       </div>
 
+      <!-- ② FILTER ORIENTASI -->
       <div class="orient-filter">
         <button class="orient-btn active" data-orient="all">Semua</button>
         <button class="orient-btn" data-orient="portrait">Portrait</button>
         <button class="orient-btn" data-orient="landscape">Landscape</button>
       </div>
 
+      <!-- Info frame aktif -->
       <div class="active-frame-info" id="activeFrameInfo" style="display:none;">
-        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="color:var(--gold);flex-shrink:0"><rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/></svg>
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" style="color:var(--gold);flex-shrink:0">
+          <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
         <span class="active-frame-info-name" id="activeFrameInfoName">—</span>
         <button class="btn-remove-frame" onclick="removeActiveFrame()">Hapus</button>
       </div>
 
-      <div>
-        <div class="section-label" style="margin-bottom:10px;">Galeri Frame</div>
-        <div class="frames-grid" id="framesGrid"></div>
-      </div>
+      <!-- ③ GALERI FRAME -->
+      <div class="section-label" style="margin-bottom:8px;">Galeri Frame</div>
+      <div class="frames-grid" id="framesGrid"></div>
 
-    </div>
+      <!-- ④ PENGATURAN FRAME (muncul setelah frame dipilih) -->
+      <div id="adjustSection" class="adjust-section">
 
-    <!-- ── TAB: ADJUST ── -->
-    <div class="tab-content" id="tab-adjust">
+        <div class="section-divider">Pengaturan Frame</div>
 
-      <div id="adjustNoFrame" class="no-frame-state">
-        <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style="opacity:.4"><rect x="3" y="3" width="22" height="22" rx="3" stroke="currentColor" stroke-width="1.5"/><rect x="7" y="7" width="14" height="14" rx="1" stroke="currentColor" stroke-width="1"/></svg>
-        <span>Pilih frame dulu dari tab <strong style="color:var(--gold)">Frames</strong></span>
-      </div>
-
-      <div id="adjustPanel" style="display:none; flex-direction:column; gap:14px;">
-
+        <!-- Opasitas -->
         <div class="adjust-block">
           <div class="adjust-block-title">Opasitas Frame</div>
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span class="slider-label">Transparency</span>
-              <span class="slider-val" id="valOpacity">100%</span>
-            </div>
-            <input type="range" id="slOpacity" min="10" max="100" value="100">
+          <div class="slider-label-row">
+            <span class="slider-label">Transparency</span>
+            <span class="slider-val" id="valOpacity">100%</span>
           </div>
+          <input type="range" id="slOpacity" min="10" max="100" value="100">
         </div>
 
+        <!-- Scale -->
         <div class="adjust-block">
           <div class="adjust-block-title">Ukuran Frame</div>
-          <div class="slider-group">
-            <div class="slider-label-row">
-              <span class="slider-label">Scale</span>
-              <span class="slider-val" id="valScale">100%</span>
-            </div>
-            <input type="range" id="slScale" min="50" max="200" value="100">
+          <div class="slider-label-row">
+            <span class="slider-label">Scale</span>
+            <span class="slider-val" id="valScale">100%</span>
           </div>
+          <input type="range" id="slScale" min="50" max="200" value="100">
         </div>
 
+        <!-- Rotasi -->
         <div class="adjust-block">
-          <div class="adjust-block-title" style="margin-bottom:8px;">Posisi Frame</div>
-          <div class="pos-grid">
-            <button class="pos-btn" data-pos="top-left" title="Kiri Atas">↖</button>
-            <button class="pos-btn" data-pos="top-center" title="Tengah Atas">↑</button>
-            <button class="pos-btn" data-pos="top-right" title="Kanan Atas">↗</button>
-            <button class="pos-btn active" data-pos="center" title="Tengah">✛</button>
-            <button class="pos-btn" data-pos="bottom-left" title="Kiri Bawah">↙</button>
-            <button class="pos-btn" data-pos="bottom-center" title="Tengah Bawah">↓</button>
-            <button class="pos-btn" data-pos="bottom-right" title="Kanan Bawah">↘</button>
-            <button class="pos-btn" data-pos="left-center" title="Kiri Tengah">←</button>
-            <button class="pos-btn" data-pos="right-center" title="Kanan Tengah">→</button>
+          <div class="adjust-block-title">Rotasi Frame</div>
+          <div class="slider-label-row">
+            <span class="slider-label">Sudut</span>
+            <span class="slider-val" id="valRotate">0°</span>
           </div>
-          <div style="font-size:12px;color:var(--text-dim);margin-top:10px;">
-            💡 Atau drag frame langsung di canvas
+          <input type="range" id="slRotate" min="-180" max="180" value="0">
+          <div class="btn-row" style="margin-top:10px;">
+            <button class="tool-btn flex-btn" id="btnRotL" title="Putar kiri -90°">
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 8a5 5 0 1 0 1-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M4 2v4H0" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              -90°
+            </button>
+            <button class="tool-btn flex-btn" id="btnRotR" title="Putar kanan +90°">
+              +90°
+              <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8a5 5 0 1 1-1-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M12 2v4h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </button>
+            <button class="tool-btn flex-btn" id="btnRotReset">Reset</button>
           </div>
         </div>
 
-        <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi &amp; Ukuran</button>
+        <!-- Flip -->
+        <div class="adjust-block">
+          <div class="adjust-block-title">Cermin (Flip)</div>
+          <div class="btn-row" style="margin-top:6px;">
+            <button class="tool-btn flex-btn" id="btnFlipH">⇔ Flip Horizontal</button>
+            <button class="tool-btn flex-btn" id="btnFlipV">⇕ Flip Vertikal</button>
+          </div>
+        </div>
 
-      </div>
-    </div>
+        <!-- Posisi Frame -->
+        <div class="adjust-block">
+          <div class="adjust-block-title" style="margin-bottom:10px;">Posisi Frame</div>
+          <div class="pos-grid">
+            <button class="pos-btn" data-pos="top-left">↖</button>
+            <button class="pos-btn" data-pos="top-center">↑</button>
+            <button class="pos-btn" data-pos="top-right">↗</button>
+            <button class="pos-btn" data-pos="left-center">←</button>
+            <button class="pos-btn active" data-pos="center">✛</button>
+            <button class="pos-btn" data-pos="right-center">→</button>
+            <button class="pos-btn" data-pos="bottom-left">↙</button>
+            <button class="pos-btn" data-pos="bottom-center">↓</button>
+            <button class="pos-btn" data-pos="bottom-right">↘</button>
+          </div>
+          <p class="hint-text">💡 Atau drag frame langsung di canvas</p>
+        </div>
 
-    <!-- ── TAB: BACKGROUND ── -->
-    <div class="tab-content" id="tab-background">
+        <!-- Reset semua -->
+        <button class="btn-reset-full" onclick="resetFrameTransform()">Reset Semua Pengaturan Frame</button>
+
+      </div><!-- /adjustSection -->
+
+      <!-- ⑤ BACKGROUND FOTO (selalu tampil) -->
+      <div class="section-divider">Background Foto</div>
 
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Background Foto</div>
+        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Background</div>
         <div class="bg-swatches" id="bgSwatches"></div>
       </div>
 
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Kustom</div>
+        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Kustom</div>
         <div class="bg-custom-row">
           <span class="bg-custom-label">Pilih warna bebas</span>
           <input type="color" id="bgColorPicker" value="#ffffff">
         </div>
       </div>
 
-      <div class="adjust-block">
+      <div class="adjust-block" style="margin-bottom:24px;">
         <div class="adjust-block-title" style="margin-bottom:10px;">Padding Canvas</div>
-        <div class="slider-group">
-          <div class="slider-label-row">
-            <span class="slider-label">Jarak tepi foto</span>
-            <span class="slider-val" id="valPadding">0px</span>
-          </div>
-          <input type="range" id="slPadding" min="0" max="80" value="0">
+        <div class="slider-label-row">
+          <span class="slider-label">Jarak tepi foto</span>
+          <span class="slider-val" id="valPadding">0px</span>
         </div>
+        <input type="range" id="slPadding" min="0" max="80" value="0">
       </div>
 
-    </div>
-
+    </div><!-- /panel-scroll -->
   </div><!-- /right-panel -->
+
 </div><!-- /frame-layout -->
 
 <div id="toast"></div>
 
-<!-- BOTTOM SHEET — Mobile only -->
+<!-- ══════════════════════════════════════
+     BOTTOM SHEET — Mobile only
+     (satu panel, semua fitur, scroll ke bawah)
+══════════════════════════════════════ -->
 <div class="frame-bottom-sheet" id="frameBottomSheet" style="display:none;">
   <div class="fbs-handle" id="fbsHandle">
+    <div class="fbs-pill"></div>
     <div class="fbs-tab-row">
-      <!-- Tombol Pan DIHAPUS dari sini -->
-      <button class="fbs-tab-btn active" data-fbs="frames">Frames</button>
-      <button class="fbs-tab-btn" data-fbs="adjust">Adjust</button>
-      <button class="fbs-tab-btn" data-fbs="background">Background</button>
+      <button class="fbs-tab-btn active" id="fbsMainBtn">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+          <rect x="1" y="1" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/>
+          <rect x="3" y="3" width="6" height="6" rx="0.5" stroke="currentColor" stroke-width="0.9"/>
+        </svg>
+        Frames
+      </button>
     </div>
   </div>
-  <div class="fbs-content">
 
-    <!-- PANEL: Frames -->
+  <div class="fbs-content">
     <div class="fbs-panel active" id="fbs-frames">
 
+      <!-- Upload -->
       <div class="upload-zone" id="fbsUploadZone">
         <div class="upload-zone-icon">
           <svg width="22" height="22" viewBox="0 0 22 22" fill="none">
@@ -266,90 +283,105 @@
         <input type="file" id="fbsFrameFileInput" accept="image/png" hidden multiple>
       </div>
 
+      <!-- Filter orientasi -->
       <div class="orient-filter">
         <button class="orient-btn active" data-orient="all">Semua</button>
         <button class="orient-btn" data-orient="portrait">Portrait</button>
         <button class="orient-btn" data-orient="landscape">Landscape</button>
       </div>
 
+      <!-- Info frame aktif -->
       <div class="active-frame-info" id="fbsActiveFrameInfo" style="display:none;">
         <span class="active-frame-info-name" id="fbsActiveFrameInfoName">—</span>
         <button class="btn-remove-frame" onclick="removeActiveFrame()">Hapus</button>
       </div>
 
+      <!-- Galeri -->
       <div class="section-label">Galeri Frame</div>
       <div class="frames-grid" id="fbsFramesGrid"></div>
-    </div>
 
-    <!-- PANEL: Adjust -->
-    <div class="fbs-panel" id="fbs-adjust">
-      <div class="adjust-block">
-        <div class="adjust-block-title">Opasitas Frame</div>
-        <div class="slider-label-row">
-          <span class="slider-label">Transparency</span>
-          <span class="slider-val" id="fbsValOpacity">100%</span>
-        </div>
-        <input type="range" id="fbsSlOpacity" min="10" max="100" value="100">
-      </div>
-      <div class="adjust-block">
-        <div class="adjust-block-title">Ukuran Frame</div>
-        <div class="slider-label-row">
-          <span class="slider-label">Scale</span>
-          <span class="slider-val" id="fbsValScale">100%</span>
-        </div>
-        <input type="range" id="fbsSlScale" min="50" max="200" value="100">
-      </div>
-      <div class="adjust-block">
-        <div class="adjust-block-title">Rotasi Frame</div>
-        <div class="slider-label-row">
-          <span class="slider-label">Sudut</span>
-          <span class="slider-val" id="fbsValRotate">0°</span>
-        </div>
-        <input type="range" id="fbsSlRotate" min="-180" max="180" value="0">
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="tool-btn" id="fbsBtnRotL" style="flex:1;font-size:18px;min-height:46px;">↺</button>
-          <button class="tool-btn" id="fbsBtnRotR" style="flex:1;font-size:18px;min-height:46px;">↻</button>
-          <button class="tool-btn" id="fbsBtnRotReset" style="flex:1;font-size:12px;min-height:46px;">Reset</button>
-        </div>
-      </div>
-      <div class="adjust-block">
-        <div class="adjust-block-title">Cermin (Flip)</div>
-        <div style="display:flex;gap:6px;margin-top:4px;">
-          <button class="tool-btn" id="fbsBtnFlipH" style="flex:1;min-height:46px;font-size:13px;">⇔ Flip H</button>
-          <button class="tool-btn" id="fbsBtnFlipV" style="flex:1;min-height:46px;font-size:13px;">⇕ Flip V</button>
-        </div>
-      </div>
-      <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:10px;">Posisi Frame</div>
-        <div class="pos-grid">
-          <button class="pos-btn" data-pos="top-left">↖</button>
-          <button class="pos-btn" data-pos="top-center">↑</button>
-          <button class="pos-btn" data-pos="top-right">↗</button>
-          <button class="pos-btn active" data-pos="center">✛</button>
-          <button class="pos-btn" data-pos="bottom-left">↙</button>
-          <button class="pos-btn" data-pos="bottom-center">↓</button>
-          <button class="pos-btn" data-pos="bottom-right">↘</button>
-          <button class="pos-btn" data-pos="left-center">←</button>
-          <button class="pos-btn" data-pos="right-center">→</button>
-        </div>
-      </div>
-      <button class="btn-reset" onclick="resetFrameTransform()">Reset Posisi &amp; Ukuran</button>
-    </div>
+      <!-- Adjust mobile (muncul setelah frame dipilih) -->
+      <div id="fbsAdjustSection" class="adjust-section">
 
-    <!-- PANEL: Background -->
-    <div class="fbs-panel" id="fbs-background">
+        <div class="section-divider">Pengaturan Frame</div>
+
+        <div class="adjust-block">
+          <div class="adjust-block-title">Opasitas Frame</div>
+          <div class="slider-label-row">
+            <span class="slider-label">Transparency</span>
+            <span class="slider-val" id="fbsValOpacity">100%</span>
+          </div>
+          <input type="range" id="fbsSlOpacity" min="10" max="100" value="100">
+        </div>
+
+        <div class="adjust-block">
+          <div class="adjust-block-title">Ukuran Frame</div>
+          <div class="slider-label-row">
+            <span class="slider-label">Scale</span>
+            <span class="slider-val" id="fbsValScale">100%</span>
+          </div>
+          <input type="range" id="fbsSlScale" min="50" max="200" value="100">
+        </div>
+
+        <div class="adjust-block">
+          <div class="adjust-block-title">Rotasi Frame</div>
+          <div class="slider-label-row">
+            <span class="slider-label">Sudut</span>
+            <span class="slider-val" id="fbsValRotate">0°</span>
+          </div>
+          <input type="range" id="fbsSlRotate" min="-180" max="180" value="0">
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="tool-btn flex-btn" id="fbsBtnRotL">↺ -90°</button>
+            <button class="tool-btn flex-btn" id="fbsBtnRotR">+90° ↻</button>
+            <button class="tool-btn flex-btn" id="fbsBtnRotReset">Reset</button>
+          </div>
+        </div>
+
+        <div class="adjust-block">
+          <div class="adjust-block-title">Cermin (Flip)</div>
+          <div class="btn-row" style="margin-top:6px;">
+            <button class="tool-btn flex-btn" id="fbsBtnFlipH">⇔ Flip H</button>
+            <button class="tool-btn flex-btn" id="fbsBtnFlipV">⇕ Flip V</button>
+          </div>
+        </div>
+
+        <div class="adjust-block">
+          <div class="adjust-block-title" style="margin-bottom:10px;">Posisi Frame</div>
+          <div class="pos-grid">
+            <button class="pos-btn" data-pos="top-left">↖</button>
+            <button class="pos-btn" data-pos="top-center">↑</button>
+            <button class="pos-btn" data-pos="top-right">↗</button>
+            <button class="pos-btn" data-pos="left-center">←</button>
+            <button class="pos-btn active" data-pos="center">✛</button>
+            <button class="pos-btn" data-pos="right-center">→</button>
+            <button class="pos-btn" data-pos="bottom-left">↙</button>
+            <button class="pos-btn" data-pos="bottom-center">↓</button>
+            <button class="pos-btn" data-pos="bottom-right">↘</button>
+          </div>
+          <p class="hint-text">💡 Drag frame langsung di canvas</p>
+        </div>
+
+        <button class="btn-reset-full" onclick="resetFrameTransform()">Reset Semua Pengaturan Frame</button>
+
+      </div><!-- /fbsAdjustSection -->
+
+      <!-- Background (selalu tampil) -->
+      <div class="section-divider">Background Foto</div>
+
       <div class="adjust-block">
         <div class="adjust-block-title" style="margin-bottom:12px;">Warna Background</div>
         <div class="bg-swatches" id="fbsBgSwatches"></div>
       </div>
+
       <div class="adjust-block">
-        <div class="adjust-block-title" style="margin-bottom:12px;">Warna Kustom</div>
+        <div class="adjust-block-title" style="margin-bottom:10px;">Warna Kustom</div>
         <div class="bg-custom-row">
           <span class="bg-custom-label">Pilih warna bebas</span>
           <input type="color" id="fbsBgColorPicker" value="#ffffff">
         </div>
       </div>
-      <div class="adjust-block">
+
+      <div class="adjust-block" style="margin-bottom:20px;">
         <div class="adjust-block-title" style="margin-bottom:10px;">Padding Canvas</div>
         <div class="slider-label-row">
           <span class="slider-label">Jarak tepi</span>
@@ -357,12 +389,11 @@
         </div>
         <input type="range" id="fbsSlPadding" min="0" max="80" value="0">
       </div>
-    </div>
 
-  </div>
-</div>
+    </div><!-- /fbs-frames -->
+  </div><!-- /fbs-content -->
+</div><!-- /frame-bottom-sheet -->
 
 <script src="js/frame.js"></script>
-
 </body>
 </html>

@@ -1,6 +1,8 @@
 /* ============================================================
    frame.js — Bali Sadhu Photo
-   v7.1 — Hapus tombol Pan, frame langsung draggable otomatis
+   v9.0 — Single panel, all features in one scroll
+          Adjust section reveals after frame selected
+          All controls: opacity, scale, rotate, flip, position
    ============================================================ */
 
 let frameImgEl  = null;
@@ -13,7 +15,7 @@ const BG_SWATCHES = [
   '#5c3d1e','#C9A84C','#2D5A3D','#888880',
 ];
 
-// ─── STATE ───────────────────────────────────────────────────
+// ─── STATE ───────────────────────────────────────────────
 const S = {
   photo: null,
   photoW: 0, photoH: 0,
@@ -21,8 +23,7 @@ const S = {
   bgColor: '#ffffff',
   padding: 0,
 
-  zoom: 1,
-  panX: 0, panY: 0,
+  zoom: 1, panX: 0, panY: 0,
 
   activeFrame: null,
   frameOffX: 0, frameOffY: 0,
@@ -33,99 +34,41 @@ const S = {
   filterOrient: 'all',
 };
 
-// ─── DOM ─────────────────────────────────────────────────────
+// ─── DOM ─────────────────────────────────────────────────
 const photoCanvas    = document.getElementById('photoCanvas');
 const pCtx           = photoCanvas.getContext('2d');
 const compositeWrap  = document.getElementById('compositeWrap');
 const canvasStage    = document.getElementById('canvasStage');
 const loadingOverlay = document.getElementById('loadingOverlay');
 
-// ─── INIT ─────────────────────────────────────────────────────
+// ─── INIT ────────────────────────────────────────────────
 (function init() {
   loadPhoto();
-  setupTabs();
   setupZoom();
   setupUpload();
-  setupAdjust();
+  setupAdjustControls();
   setupBackground();
-  setupFrameBottomSheet();
+  setupBottomSheet();
   loadFramesFromServer();
-  injectTransformPanel();
 })();
 
-// ─── INJECT TRANSFORM CONTROLS ───────────────────────────────
-function injectTransformPanel() {
-  const panel = document.getElementById('adjustPanel');
-  if (!panel) return;
-
-  const extra = document.createElement('div');
-  extra.innerHTML = `
-    <div class="adjust-block">
-      <div class="adjust-block-title">Rotasi Frame</div>
-      <div class="slider-group">
-        <div class="slider-label-row">
-          <span class="slider-label">Sudut</span>
-          <span class="slider-val" id="valRotate">0°</span>
-        </div>
-        <input type="range" id="slRotate" min="-180" max="180" value="0">
-      </div>
-      <div style="display:flex;gap:8px;margin-top:10px;">
-        <button class="tool-btn" id="btnRotL" title="-90°" style="flex:1;font-size:18px;min-height:44px;">↺</button>
-        <button class="tool-btn" id="btnRotR" title="+90°" style="flex:1;font-size:18px;min-height:44px;">↻</button>
-        <button class="tool-btn" id="btnRotReset" style="flex:1;font-size:12px;min-height:44px;">Reset</button>
-      </div>
-    </div>
-    <div class="adjust-block">
-      <div class="adjust-block-title">Cermin (Flip)</div>
-      <div style="display:flex;gap:8px;margin-top:6px;">
-        <button class="tool-btn" id="btnFlipH" style="flex:1;font-size:13px;min-height:44px;">⇔ Flip Horizontal</button>
-        <button class="tool-btn" id="btnFlipV" style="flex:1;font-size:13px;min-height:44px;">⇕ Flip Vertikal</button>
-      </div>
-    </div>
-  `;
-  panel.appendChild(extra);
-
-  document.getElementById('slRotate')?.addEventListener('input', e => {
-    S.frameRotate = parseInt(e.target.value);
-    const v = document.getElementById('valRotate');
-    if (v) v.textContent = S.frameRotate + '°';
-    refreshFrameStyle();
-  });
-
-  document.getElementById('btnRotL')?.addEventListener('click', () => {
-    S.frameRotate = ((S.frameRotate - 90 + 540) % 360) - 180;
-    syncRotateSlider(); refreshFrameStyle();
-  });
-  document.getElementById('btnRotR')?.addEventListener('click', () => {
-    S.frameRotate = ((S.frameRotate + 90 + 180) % 360) - 180;
-    syncRotateSlider(); refreshFrameStyle();
-  });
-  document.getElementById('btnRotReset')?.addEventListener('click', () => {
-    S.frameRotate = 0; syncRotateSlider(); refreshFrameStyle();
-  });
-  document.getElementById('btnFlipH')?.addEventListener('click', () => {
-    S.frameFlipH = !S.frameFlipH;
-    const b = document.getElementById('btnFlipH');
-    if (b) { b.style.color = S.frameFlipH ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipH ? 'var(--gold)' : ''; }
-    refreshFrameStyle();
-  });
-  document.getElementById('btnFlipV')?.addEventListener('click', () => {
-    S.frameFlipV = !S.frameFlipV;
-    const b = document.getElementById('btnFlipV');
-    if (b) { b.style.color = S.frameFlipV ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipV ? 'var(--gold)' : ''; }
-    refreshFrameStyle();
-  });
+// ─── SHOW / HIDE ADJUST SECTION ──────────────────────────
+function showAdjustSection(visible) {
+  // Desktop
+  const sec = document.getElementById('adjustSection');
+  if (sec) {
+    if (visible) sec.classList.add('visible');
+    else         sec.classList.remove('visible');
+  }
+  // Mobile
+  const fbsSec = document.getElementById('fbsAdjustSection');
+  if (fbsSec) {
+    if (visible) fbsSec.classList.add('visible');
+    else         fbsSec.classList.remove('visible');
+  }
 }
 
-function syncRotateSlider() {
-  const sl = document.getElementById('slRotate');
-  const vl = document.getElementById('valRotate');
-  if (sl) sl.value = S.frameRotate;
-  if (vl) vl.textContent = S.frameRotate + '°';
-  syncFbsRotate();
-}
-
-// ─── LOAD PHOTO ───────────────────────────────────────────────
+// ─── LOAD PHOTO ──────────────────────────────────────────
 function loadPhoto() {
   const editedPath = sessionStorage.getItem('bsp_editedPath');
   const serverPath = sessionStorage.getItem('bsp_serverPath');
@@ -147,14 +90,11 @@ function loadPhoto() {
       for (let j = 0; j < 1200; j += 40)
         pCtx.fillRect(i, j, 20, 20);
     pCtx.fillStyle = 'rgba(255,255,255,0.15)';
-    pCtx.font = 'bold 28px serif';
-    pCtx.textAlign = 'center';
+    pCtx.font = 'bold 28px serif'; pCtx.textAlign = 'center';
     pCtx.fillText('— Demo Mode —', 450, 580);
-    pCtx.font = '16px sans-serif';
-    pCtx.fillStyle = 'rgba(201,168,76,0.6)';
+    pCtx.font = '16px sans-serif'; pCtx.fillStyle = 'rgba(201,168,76,0.6)';
     pCtx.fillText('Upload foto dari Step 1', 450, 620);
-    S.photoW = 900; S.photoH = 1200;
-    S.orientation = 'portrait';
+    S.photoW = 900; S.photoH = 1200; S.orientation = 'portrait';
     finalizePhotoLoad();
     return;
   }
@@ -162,19 +102,15 @@ function loadPhoto() {
   const img = new Image();
   img.crossOrigin = 'anonymous';
   img.onload = () => {
-    S.photo       = img;
-    S.photoW      = img.naturalWidth;
-    S.photoH      = img.naturalHeight;
+    S.photo = img;
+    S.photoW = img.naturalWidth; S.photoH = img.naturalHeight;
     S.orientation = S.photoW >= S.photoH ? 'landscape' : 'portrait';
-    drawPhoto();
-    finalizePhotoLoad();
+    drawPhoto(); finalizePhotoLoad();
   };
   img.onerror = () => {
-    console.error('[frame.js] Gagal load dari:', src);
     if (src !== base64Src && base64Src) {
       showToast('⚠️ Mencoba fallback cache lokal…');
-      img.crossOrigin = null;
-      img.src = base64Src;
+      img.crossOrigin = null; img.src = base64Src;
     } else {
       showToast('❌ Gagal load foto — kembali ke edit');
       setTimeout(() => { window.location.href = 'edit.php'; }, 2000);
@@ -213,26 +149,21 @@ function redrawPhoto() {
   updateFrameOverlay();
 }
 
-// ─── GO TO PRINT ──────────────────────────────────────────────
+// ─── GO TO PRINT ─────────────────────────────────────────
 async function goToPrint() {
   showToast('⏳ Menyiapkan untuk cetak…');
-
   const btnNext = document.querySelector('.btn-next');
   if (btnNext) { btnNext.disabled = true; btnNext.textContent = 'Menyiapkan…'; }
 
   try {
-    const oc   = document.createElement('canvas');
-    oc.width   = photoCanvas.width;
-    oc.height  = photoCanvas.height;
+    const oc = document.createElement('canvas');
+    oc.width = photoCanvas.width; oc.height = photoCanvas.height;
     const octx = oc.getContext('2d');
     octx.drawImage(photoCanvas, 0, 0);
     renderFrameToCanvas(octx, oc);
 
     const blob = await new Promise((resolve, reject) => {
-      oc.toBlob(
-        (b) => { if (b) resolve(b); else reject(new Error('toBlob() gagal')); },
-        'image/jpeg', 0.92
-      );
+      oc.toBlob(b => { if (b) resolve(b); else reject(new Error('toBlob() gagal')); }, 'image/jpeg', 0.92);
     });
 
     const photoId = sessionStorage.getItem('bsp_photoId');
@@ -245,26 +176,17 @@ async function goToPrint() {
       const xhr = new XMLHttpRequest();
       const apiBase = window.location.pathname.replace(/\/[^\/]*$/, '');
       xhr.open('POST', apiBase + '/api/save_edited_image.php');
-
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          const pct = Math.round((e.loaded / e.total) * 100);
-          showToast(`Mengupload… ${pct}%`);
-        }
+      xhr.upload.onprogress = e => {
+        if (e.lengthComputable) showToast(`Mengupload… ${Math.round(e.loaded/e.total*100)}%`);
       };
-
       xhr.onload = () => {
         if (xhr.status >= 200 && xhr.status < 300) {
           try {
             const data = JSON.parse(xhr.responseText);
             if (data.success) resolve(data.path);
             else reject(new Error(data.error || 'Server error'));
-          } catch (e) {
-            reject(new Error('Response tidak valid dari server'));
-          }
-        } else {
-          reject(new Error(`HTTP ${xhr.status}`));
-        }
+          } catch (e) { reject(new Error('Response tidak valid')); }
+        } else { reject(new Error(`HTTP ${xhr.status}`)); }
       };
       xhr.onerror   = () => reject(new Error('Koneksi gagal'));
       xhr.ontimeout = () => reject(new Error('Upload timeout'));
@@ -276,17 +198,16 @@ async function goToPrint() {
     sessionStorage.removeItem('bsp_framedSrc');
     sessionStorage.setItem('bsp_frameId',    S.activeFrame?.id || 'none');
     sessionStorage.setItem('bsp_cropSizeId', sessionStorage.getItem('bsp_cropSizeId') || '4R');
-
     window.location.href = 'print.php';
 
   } catch (err) {
-    console.error('[goToPrint] Error:', err);
+    console.error('[goToPrint]', err);
     showToast('❌ Gagal: ' + (err.message || 'Upload error'));
     if (btnNext) { btnNext.disabled = false; btnNext.textContent = 'Next: Print'; }
   }
 }
 
-// ─── SERVER FRAMES ───────────────────────────────────────────
+// ─── SERVER FRAMES ────────────────────────────────────────
 async function loadFramesFromServer() {
   try {
     const res = await fetch('api/frames.php');
@@ -297,7 +218,11 @@ async function loadFramesFromServer() {
     data.frames.forEach(f => {
       const id = 'srv-' + f.id;
       if (S.frames.find(x => x.id === id)) return;
-      S.frames.push({ id, srvId: f.id, name: f.name, orient: detectOrient(f.file_path, null), src: f.file_path, thumb: f.thumbnail || f.file_path });
+      S.frames.push({
+        id, srvId: f.id, name: f.name,
+        orient: detectOrient(f.file_path, null),
+        src: f.file_path, thumb: f.thumbnail || f.file_path
+      });
       added = true;
     });
     if (added) renderFrameGrid();
@@ -311,69 +236,84 @@ function detectOrient(filePath, imgEl) {
   return 'portrait';
 }
 
-// ─── RENDER FRAME GRID ───────────────────────────────────────
+// ─── RENDER FRAME GRID ───────────────────────────────────
 function renderFrameGrid() {
-  const grid = document.getElementById('framesGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const filter  = S.filterOrient;
-  const visible = S.frames.filter(f => filter === 'all' || f.orient === filter);
+  // Render ke kedua grid (desktop + mobile)
+  ['framesGrid', 'fbsFramesGrid'].forEach(gridId => {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    grid.innerHTML = '';
 
-  if (!visible.length) {
-    grid.innerHTML = `
-      <div class="empty-frame-state">
-        <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
-          <rect x="3" y="3" width="34" height="34" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
-          <path d="M20 13v14M13 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-        </svg>
-        <span class="empty-frame-title">Belum ada frame</span>
-        <span class="empty-frame-hint">Upload file PNG transparan di bawah untuk mulai</span>
-      </div>`;
-    renderFbsFrameGrid();
-    return;
-  }
+    const visible = S.frames.filter(f => S.filterOrient === 'all' || f.orient === S.filterOrient);
 
-  visible.forEach(frame => {
-    const isActive = S.activeFrame?.id === frame.id;
-    const card = document.createElement('div');
-    card.className = 'frame-thumb-card' + (frame.orient === 'landscape' ? ' landscape' : '') + (isActive ? ' active' : '');
-    card.dataset.id = frame.id;
-    card.style.background = '#111';
+    if (!visible.length) {
+      grid.innerHTML = `
+        <div class="empty-frame-state">
+          <svg width="40" height="40" viewBox="0 0 40 40" fill="none">
+            <rect x="3" y="3" width="34" height="34" rx="4" stroke="currentColor" stroke-width="1.5" stroke-dasharray="4 3"/>
+            <path d="M20 13v14M13 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+          <span class="empty-frame-title">Belum ada frame</span>
+          <span class="empty-frame-hint">Upload file PNG transparan di atas</span>
+        </div>`;
+      return;
+    }
 
-    const badge = document.createElement('span');
-    badge.className = 'card-orient-badge';
-    badge.textContent = frame.orient === 'landscape' ? 'L' : 'P';
-    card.appendChild(badge);
+    visible.forEach(frame => {
+      const isActive = S.activeFrame?.id === frame.id;
+      const card = document.createElement('div');
+      card.className = 'frame-thumb-card'
+        + (frame.orient === 'landscape' ? ' landscape' : '')
+        + (isActive ? ' active' : '');
+      card.dataset.id = frame.id;
+      card.style.background = '#111';
 
-    const img = document.createElement('img');
-    img.src = frame.thumb || frame.src;
-    img.alt = frame.name;
-    img.loading = 'lazy';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-    card.appendChild(img);
+      // Badge hanya di desktop grid
+      if (gridId === 'framesGrid') {
+        const badge = document.createElement('span');
+        badge.className = 'card-orient-badge';
+        badge.textContent = frame.orient === 'landscape' ? 'L' : 'P';
+        card.appendChild(badge);
+      }
 
-    const nameEl = document.createElement('div');
-    nameEl.className = 'card-name';
-    nameEl.textContent = frame.name;
-    card.appendChild(nameEl);
+      const img = document.createElement('img');
+      img.src = frame.thumb || frame.src;
+      img.alt = frame.name; img.loading = 'lazy';
+      img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
+      card.appendChild(img);
 
-    const del = document.createElement('button');
-    del.className = 'card-del'; del.title = 'Hapus frame'; del.innerHTML = '✕';
-    del.addEventListener('click', e => { e.stopPropagation(); deleteFrame(frame.id, frame.srvId); });
-    card.appendChild(del);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'card-name'; nameEl.textContent = frame.name;
+      card.appendChild(nameEl);
 
-    card.addEventListener('click', () => applyFrame(frame));
-    grid.appendChild(card);
+      // Delete button hanya di desktop
+      if (gridId === 'framesGrid') {
+        const del = document.createElement('button');
+        del.className = 'card-del'; del.title = 'Hapus frame'; del.innerHTML = '✕';
+        del.addEventListener('click', e => { e.stopPropagation(); deleteFrame(frame.id, frame.srvId); });
+        card.appendChild(del);
+      }
+
+      card.addEventListener('click', () => applyFrame(frame));
+      grid.appendChild(card);
+    });
   });
 
-  renderFbsFrameGrid();
-  const fbsInfoBar  = document.getElementById('fbsActiveFrameInfo');
-  const fbsInfoName = document.getElementById('fbsActiveFrameInfoName');
-  if (fbsInfoBar)  fbsInfoBar.style.display = S.activeFrame ? '' : 'none';
-  if (fbsInfoName && S.activeFrame) fbsInfoName.textContent = S.activeFrame.name;
+  // Update info bar frame aktif
+  const hasActive = !!S.activeFrame;
+  ['activeFrameInfo', 'fbsActiveFrameInfo'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = hasActive ? '' : 'none';
+  });
+  if (hasActive) {
+    ['activeFrameInfoName', 'fbsActiveFrameInfoName'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = S.activeFrame.name;
+    });
+  }
 }
 
-// ─── APPLY FRAME ─────────────────────────────────────────────
+// ─── APPLY FRAME ─────────────────────────────────────────
 function applyFrame(frame) {
   const img = new Image();
   img.crossOrigin = 'anonymous';
@@ -383,26 +323,21 @@ function applyFrame(frame) {
     S.frameScale = 1; S.frameOpacity = 1;
     S.frameRotate = 0; S.frameFlipH = false; S.frameFlipV = false;
 
-    setSlider('slOpacity', 100, 'valOpacity', '100%');
-    setSlider('slScale',   100, 'valScale',   '100%');
-    const fbsOp = document.getElementById('fbsSlOpacity'); if (fbsOp) fbsOp.value = 100;
-    const fbsSc = document.getElementById('fbsSlScale');   if (fbsSc) fbsSc.value = 100;
-    const fbsOV = document.getElementById('fbsValOpacity'); if (fbsOV) fbsOV.textContent = '100%';
-    const fbsSV = document.getElementById('fbsValScale');   if (fbsSV) fbsSV.textContent = '100%';
-    syncRotateSlider(); syncFbsRotate();
+    // Sync semua slider
+    syncAllSliders();
 
-    ['btnFlipH', 'btnFlipV'].forEach(id => {
+    // Reset flip button styles
+    ['btnFlipH', 'btnFlipV', 'fbsBtnFlipH', 'fbsBtnFlipV'].forEach(id => {
       const b = document.getElementById(id);
-      if (b) { b.style.color = ''; b.style.borderColor = ''; }
+      if (b) { b.classList.remove('toggled'); }
     });
 
-    toggleAdjustPanel(true);
-    const infoBar  = document.getElementById('activeFrameInfo');
-    const infoName = document.getElementById('activeFrameInfoName');
-    if (infoBar)  infoBar.style.display = '';
-    if (infoName) infoName.textContent  = frame.name;
+    // Reset pos buttons
     document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
-    document.querySelector('.pos-btn[data-pos="center"]')?.classList.add('active');
+    document.querySelectorAll('.pos-btn[data-pos="center"]').forEach(b => b.classList.add('active'));
+
+    // Tampilkan adjust section
+    showAdjustSection(true);
 
     renderFrameGrid(); updateFrameOverlay();
     showToast(`✓ Frame "${frame.name}" diterapkan`);
@@ -413,27 +348,32 @@ function applyFrame(frame) {
 
 function removeActiveFrame() {
   S.activeFrame = null;
-  const infoBar = document.getElementById('activeFrameInfo');
-  if (infoBar) infoBar.style.display = 'none';
-  toggleAdjustPanel(false);
+  showAdjustSection(false);
   renderFrameGrid(); updateFrameOverlay();
   showToast('Frame dihapus dari foto');
 }
 
-function toggleAdjustPanel(show) {
-  const nf = document.getElementById('adjustNoFrame');
-  const p  = document.getElementById('adjustPanel');
-  if (nf) nf.style.display = show ? 'none' : '';
-  if (p)  p.style.display  = show ? 'flex' : 'none';
+// ─── SLIDER SYNC ─────────────────────────────────────────
+function syncAllSliders() {
+  _setSlider('slOpacity',    100, 'valOpacity',    '100%');
+  _setSlider('slScale',      100, 'valScale',      '100%');
+  _setSlider('slRotate',     0,   'valRotate',     '0°');
+  _setSlider('fbsSlOpacity', 100, 'fbsValOpacity', '100%');
+  _setSlider('fbsSlScale',   100, 'fbsValScale',   '100%');
+  _setSlider('fbsSlRotate',  0,   'fbsValRotate',  '0°');
 }
 
-function setSlider(id, val, vid, label) {
-  const sl = document.getElementById(id), vl = document.getElementById(vid);
-  if (sl) sl.value = val;
-  if (vl) vl.textContent = label;
+function syncRotateSlider() {
+  _setSlider('slRotate',    S.frameRotate, 'valRotate',    S.frameRotate + '°');
+  _setSlider('fbsSlRotate', S.frameRotate, 'fbsValRotate', S.frameRotate + '°');
 }
 
-// ─── FRAME OVERLAY ───────────────────────────────────────────
+function _setSlider(sid, val, lid, label) {
+  const s = document.getElementById(sid); if (s) s.value = val;
+  const l = document.getElementById(lid); if (l) l.textContent = label;
+}
+
+// ─── FRAME OVERLAY ───────────────────────────────────────
 function updateFrameOverlay() {
   if (frameImgEl)  { frameImgEl.remove();  frameImgEl  = null; }
   if (frameDragEl) { frameDragEl.remove(); frameDragEl = null; }
@@ -455,7 +395,7 @@ function updateFrameOverlay() {
   compositeWrap.appendChild(frameImgEl);
 
   frameDragEl = document.createElement('div');
-  frameDragEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;cursor:grab;z-index:20;';
+  frameDragEl.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;cursor:grab;z-index:20;touch-action:none;';
   compositeWrap.appendChild(frameDragEl);
   setupFrameDrag(frameDragEl);
 }
@@ -472,31 +412,24 @@ function refreshFrameStyle() {
   frameImgEl.style.transform = buildTransform();
 }
 
-// ─── FRAME DRAG ──────────────────────────────────────────────
-// Tidak perlu mode toggle — frame selalu bisa digeser langsung
-// 1 jari = geser frame | 2 jari = pinch zoom canvas
+// ─── FRAME DRAG ──────────────────────────────────────────
 function setupFrameDrag(el) {
   let dragging = false, sx, sy, sox, soy;
 
-  // Mouse — selalu aktif
   el.addEventListener('mousedown', e => {
     dragging = true;
     sx = e.clientX; sy = e.clientY;
     sox = S.frameOffX; soy = S.frameOffY;
-    el.style.cursor = 'grabbing';
-    e.preventDefault();
+    el.style.cursor = 'grabbing'; e.preventDefault();
   });
 
-  // Touch — 1 jari geser frame, 2 jari untuk pinch zoom
   el.addEventListener('touchstart', e => {
-    if (!S.activeFrame) return;
-    if (e.touches.length !== 1) return; // biarkan 2 jari ke canvas zoom
+    if (!S.activeFrame || e.touches.length !== 1) return;
     dragging = true;
     const t = e.touches[0];
     sx = t.clientX; sy = t.clientY;
     sox = S.frameOffX; soy = S.frameOffY;
-    e.stopPropagation();
-    e.preventDefault();
+    e.stopPropagation(); e.preventDefault();
   }, { passive: false });
 
   document.addEventListener('mousemove', e => {
@@ -513,8 +446,7 @@ function setupFrameDrag(el) {
     const t = e.touches[0], dz = 1 / S.zoom;
     S.frameOffX = sox + (t.clientX - sx) * dz;
     S.frameOffY = soy + (t.clientY - sy) * dz;
-    refreshFrameStyle();
-    e.preventDefault();
+    refreshFrameStyle(); e.preventDefault();
   }, { passive: false });
 
   const stop = () => { dragging = false; if (el) el.style.cursor = 'grab'; };
@@ -522,7 +454,7 @@ function setupFrameDrag(el) {
   document.addEventListener('touchend', stop);
 }
 
-// ─── ZOOM & PAN ──────────────────────────────────────────────
+// ─── ZOOM & PAN ──────────────────────────────────────────
 function setupZoom() {
   document.getElementById('btnZoomIn')?.addEventListener('click',  () => setZoom(S.zoom * 1.2));
   document.getElementById('btnZoomOut')?.addEventListener('click', () => setZoom(S.zoom / 1.2));
@@ -530,25 +462,26 @@ function setupZoom() {
   document.getElementById('btnZoom100')?.addEventListener('click', zoomTo100);
 
   if (!canvasStage) return;
-
   canvasStage.addEventListener('wheel', e => {
-    e.preventDefault();
-    setZoom(S.zoom * (e.deltaY > 0 ? 0.9 : 1.1));
+    e.preventDefault(); setZoom(S.zoom * (e.deltaY > 0 ? 0.9 : 1.1));
   }, { passive: false });
 
+  // Mouse pan (middle click or alt+drag)
   let panning = false, px, py, ppx, ppy;
   canvasStage.addEventListener('mousedown', e => {
     if (e.button === 1 || e.altKey) {
-      panning = true; px = e.clientX; py = e.clientY; ppx = S.panX; ppy = S.panY; e.preventDefault();
+      panning = true; px = e.clientX; py = e.clientY;
+      ppx = S.panX; ppy = S.panY; e.preventDefault();
     }
   });
   document.addEventListener('mousemove', e => {
     if (!panning) return;
-    S.panX = ppx + (e.clientX - px); S.panY = ppy + (e.clientY - py); applyStageTransform();
+    S.panX = ppx + (e.clientX - px); S.panY = ppy + (e.clientY - py);
+    applyStageTransform();
   });
   document.addEventListener('mouseup', () => { panning = false; });
 
-  // Touch pan & pinch zoom di canvas (saat tidak ada frame atau 2 jari)
+  // Touch: 1 jari pan (kalau tidak ada frame), 2 jari pinch zoom
   let _t1x, _t1y, _tpx, _tpy, _lastDist = 0;
   canvasStage.addEventListener('touchstart', e => {
     e.preventDefault();
@@ -565,7 +498,6 @@ function setupZoom() {
   canvasStage.addEventListener('touchmove', e => {
     e.preventDefault();
     if (e.touches.length === 1 && !S.activeFrame) {
-      // Pan canvas hanya kalau tidak ada frame aktif (frame drag handle-nya sendiri)
       S.panX = _tpx + (e.touches[0].clientX - _t1x);
       S.panY = _tpy + (e.touches[0].clientY - _t1y);
       applyStageTransform();
@@ -583,8 +515,7 @@ function setupZoom() {
 
 function setZoom(z) {
   S.zoom = Math.max(0.05, Math.min(8, z));
-  applyStageTransform();
-  updateZoomButtons();
+  applyStageTransform(); updateZoomButtons();
 }
 
 function fitToScreen() {
@@ -592,139 +523,263 @@ function fitToScreen() {
   requestAnimationFrame(() => {
     const rect = canvasStage.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) { setTimeout(fitToScreen, 100); return; }
-    const canvasW = photoCanvas.width  || S.photoW || 900;
-    const canvasH = photoCanvas.height || S.photoH || 1200;
-    const padding = 32;
-    const availW  = rect.width  - padding;
-    const availH  = rect.height - padding;
-    S.zoom = Math.min(availW / canvasW, availH / canvasH, 1);
+    const cw = photoCanvas.width  || S.photoW || 900;
+    const ch = photoCanvas.height || S.photoH || 1200;
+    S.zoom = Math.min((rect.width - 32) / cw, (rect.height - 32) / ch, 1);
     S.panX = 0; S.panY = 0;
-    applyStageTransform();
-    updateZoomButtons();
+    applyStageTransform(); updateZoomButtons();
   });
 }
 
 function zoomTo100() {
   S.zoom = 1; S.panX = 0; S.panY = 0;
-  applyStageTransform();
-  updateZoomButtons();
+  applyStageTransform(); updateZoomButtons();
   showToast('Zoom 100% — ukuran asli');
 }
 
 function applyStageTransform() {
-  if (compositeWrap) {
+  if (compositeWrap)
     compositeWrap.style.transform = `translate(${S.panX}px,${S.panY}px) scale(${S.zoom})`;
-  }
   const zd = document.getElementById('zoomDisplay');
   if (zd) zd.textContent = Math.round(S.zoom * 100) + '%';
 }
 
 function updateZoomButtons() {
-  const btnFit = document.getElementById('btnZoomFit');
   const btn100 = document.getElementById('btnZoom100');
-  if (btnFit) btnFit.classList.remove('active');
-  if (btn100) btn100.classList.remove('active');
-  if (Math.round(S.zoom * 100) === 100 && btn100) btn100.classList.add('active');
+  if (btn100) btn100.classList.toggle('active', Math.round(S.zoom * 100) === 100);
 }
 
-// ─── ADJUST ──────────────────────────────────────────────────
-function setupAdjust() {
-  document.getElementById('slOpacity')?.addEventListener('input', e => {
-    S.frameOpacity = parseInt(e.target.value) / 100;
-    const v = document.getElementById('valOpacity'); if (v) v.textContent = e.target.value + '%';
+// ─── SETUP ADJUST CONTROLS ───────────────────────────────
+// Semua kontrol adjust di-setup satu kali di sini
+// Berlaku untuk desktop (slOpacity, dll.) dan mobile (fbsSlOpacity, dll.)
+function setupAdjustControls() {
+
+  // Pasangan slider: [desktopId, mobileId, stateKey, transform, labelDesktop, labelMobile]
+  const sliderPairs = [
+    {
+      d: 'slOpacity',  m: 'fbsSlOpacity',
+      ld: 'valOpacity', lm: 'fbsValOpacity',
+      fmt: v => v + '%',
+      apply: v => { S.frameOpacity = v / 100; refreshFrameStyle(); },
+    },
+    {
+      d: 'slScale',    m: 'fbsSlScale',
+      ld: 'valScale',  lm: 'fbsValScale',
+      fmt: v => v + '%',
+      apply: v => { S.frameScale = v / 100; refreshFrameStyle(); },
+    },
+    {
+      d: 'slRotate',   m: 'fbsSlRotate',
+      ld: 'valRotate', lm: 'fbsValRotate',
+      fmt: v => v + '°',
+      apply: v => { S.frameRotate = v; syncRotateSlider(); refreshFrameStyle(); },
+    },
+  ];
+
+  sliderPairs.forEach(({ d, m, ld, lm, fmt, apply }) => {
+    [{ sid: d, lid: ld }, { sid: m, lid: lm }].forEach(({ sid, lid }) => {
+      const sl = document.getElementById(sid);
+      if (!sl) return;
+      sl.addEventListener('input', () => {
+        const v = parseInt(sl.value);
+        // Update label terkait langsung
+        const lbl = document.getElementById(lid); if (lbl) lbl.textContent = fmt(v);
+        // Apply ke state
+        apply(v);
+        // Sync pasangan lain
+        const otherId = (sid === d) ? m : d;
+        const otherLblId = (lid === ld) ? lm : ld;
+        const other = document.getElementById(otherId); if (other) other.value = v;
+        const otherLbl = document.getElementById(otherLblId); if (otherLbl) otherLbl.textContent = fmt(v);
+      });
+    });
+  });
+
+  // Rotate step buttons (desktop)
+  document.getElementById('btnRotL')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate - 90 + 540) % 360) - 180;
+    syncRotateSlider(); refreshFrameStyle();
+  });
+  document.getElementById('btnRotR')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate + 90 + 180) % 360) - 180;
+    syncRotateSlider(); refreshFrameStyle();
+  });
+  document.getElementById('btnRotReset')?.addEventListener('click', () => {
+    S.frameRotate = 0; syncRotateSlider(); refreshFrameStyle();
+  });
+
+  // Rotate step buttons (mobile)
+  document.getElementById('fbsBtnRotL')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate - 90 + 540) % 360) - 180;
+    syncRotateSlider(); refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnRotR')?.addEventListener('click', () => {
+    S.frameRotate = ((S.frameRotate + 90 + 180) % 360) - 180;
+    syncRotateSlider(); refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnRotReset')?.addEventListener('click', () => {
+    S.frameRotate = 0; syncRotateSlider(); refreshFrameStyle();
+  });
+
+  // Flip buttons (desktop)
+  document.getElementById('btnFlipH')?.addEventListener('click', () => {
+    S.frameFlipH = !S.frameFlipH;
+    document.getElementById('btnFlipH')?.classList.toggle('toggled', S.frameFlipH);
+    document.getElementById('fbsBtnFlipH')?.classList.toggle('toggled', S.frameFlipH);
     refreshFrameStyle();
   });
-  document.getElementById('slScale')?.addEventListener('input', e => {
-    S.frameScale = parseInt(e.target.value) / 100;
-    const v = document.getElementById('valScale'); if (v) v.textContent = e.target.value + '%';
+  document.getElementById('btnFlipV')?.addEventListener('click', () => {
+    S.frameFlipV = !S.frameFlipV;
+    document.getElementById('btnFlipV')?.classList.toggle('toggled', S.frameFlipV);
+    document.getElementById('fbsBtnFlipV')?.classList.toggle('toggled', S.frameFlipV);
     refreshFrameStyle();
   });
 
-  document.querySelectorAll('.pos-btn').forEach(btn => btn.addEventListener('click', () => {
-    document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active'); applyPositionPreset(btn.dataset.pos);
-  }));
-  document.querySelectorAll('.orient-btn').forEach(btn => btn.addEventListener('click', () => {
-    document.querySelectorAll('.orient-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active'); S.filterOrient = btn.dataset.orient; renderFrameGrid();
-  }));
+  // Flip buttons (mobile)
+  document.getElementById('fbsBtnFlipH')?.addEventListener('click', () => {
+    S.frameFlipH = !S.frameFlipH;
+    document.getElementById('btnFlipH')?.classList.toggle('toggled', S.frameFlipH);
+    document.getElementById('fbsBtnFlipH')?.classList.toggle('toggled', S.frameFlipH);
+    refreshFrameStyle();
+  });
+  document.getElementById('fbsBtnFlipV')?.addEventListener('click', () => {
+    S.frameFlipV = !S.frameFlipV;
+    document.getElementById('btnFlipV')?.classList.toggle('toggled', S.frameFlipV);
+    document.getElementById('fbsBtnFlipV')?.classList.toggle('toggled', S.frameFlipV);
+    refreshFrameStyle();
+  });
+
+  // Posisi preset — semua .pos-btn di seluruh halaman
+  document.querySelectorAll('.pos-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deactivate semua pos-btn
+      document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
+      // Activate semua yang sama posisi (desktop + mobile)
+      document.querySelectorAll(`.pos-btn[data-pos="${btn.dataset.pos}"]`).forEach(b => b.classList.add('active'));
+      applyPositionPreset(btn.dataset.pos);
+    });
+  });
+
+  // Orient filter — semua .orient-btn
+  document.querySelectorAll('.orient-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      // Deactivate dalam container yang sama
+      btn.closest('.orient-filter')?.querySelectorAll('.orient-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      S.filterOrient = btn.dataset.orient;
+      // Sync container lain
+      document.querySelectorAll(`.orient-btn[data-orient="${btn.dataset.orient}"]`).forEach(b => b.classList.add('active'));
+      renderFrameGrid();
+    });
+  });
 }
 
 function applyPositionPreset(pos) {
   if (!S.activeFrame) return;
   const cw = photoCanvas.width, ch = photoCanvas.height;
-  const hdw = (cw * S.frameScale - cw) / 2, hdh = (ch * S.frameScale - ch) / 2;
+  const hdw = (cw * S.frameScale - cw) / 2;
+  const hdh = (ch * S.frameScale - ch) / 2;
   const map = {
-    'top-left':      [-hdw, -hdh], 'top-center':    [0, -hdh], 'top-right':    [hdw, -hdh],
-    'center':        [0, 0],
-    'bottom-left':   [-hdw, hdh],  'bottom-center': [0, hdh],  'bottom-right': [hdw, hdh],
-    'left-center':   [-hdw, 0],    'right-center':  [hdw, 0],
+    'top-left':     [-hdw, -hdh], 'top-center':    [0, -hdh], 'top-right':    [hdw, -hdh],
+    'left-center':  [-hdw, 0],    'center':         [0, 0],    'right-center': [hdw, 0],
+    'bottom-left':  [-hdw, hdh],  'bottom-center': [0, hdh],   'bottom-right': [hdw, hdh],
   };
   if (map[pos]) { [S.frameOffX, S.frameOffY] = map[pos]; refreshFrameStyle(); }
 }
 
 function resetFrameTransform() {
-  S.frameOffX = 0; S.frameOffY = 0; S.frameScale = 1; S.frameOpacity = 1;
+  S.frameOffX = 0; S.frameOffY = 0;
+  S.frameScale = 1; S.frameOpacity = 1;
   S.frameRotate = 0; S.frameFlipH = false; S.frameFlipV = false;
-  setSlider('slOpacity', 100, 'valOpacity', '100%');
-  setSlider('slScale',   100, 'valScale',   '100%');
-  syncRotateSlider();
-  ['btnFlipH', 'btnFlipV'].forEach(id => {
-    const b = document.getElementById(id); if (b) { b.style.color = ''; b.style.borderColor = ''; }
+
+  syncAllSliders();
+
+  // Reset flip buttons
+  ['btnFlipH','btnFlipV','fbsBtnFlipH','fbsBtnFlipV'].forEach(id => {
+    document.getElementById(id)?.classList.remove('toggled');
   });
+
+  // Reset pos buttons
   document.querySelectorAll('.pos-btn').forEach(b => b.classList.remove('active'));
-  document.querySelector('.pos-btn[data-pos="center"]')?.classList.add('active');
+  document.querySelectorAll('.pos-btn[data-pos="center"]').forEach(b => b.classList.add('active'));
+
   refreshFrameStyle();
+  showToast('✓ Pengaturan frame di-reset');
 }
 
-// ─── BACKGROUND ──────────────────────────────────────────────
+// ─── BACKGROUND ──────────────────────────────────────────
 function setupBackground() {
-  const grid = document.getElementById('bgSwatches');
-  if (!grid) return;
-  BG_SWATCHES.forEach(color => {
-    const btn = document.createElement('button');
-    btn.className = 'bg-swatch' + (color === S.bgColor ? ' active' : '');
-    btn.style.background = color;
-    btn.style.border = color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent';
-    btn.title = color;
-    btn.addEventListener('click', () => {
-      setBgColor(color);
-      document.querySelectorAll('.bg-swatch').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
+  // Render swatch ke kedua grid
+  ['bgSwatches', 'fbsBgSwatches'].forEach(gridId => {
+    const grid = document.getElementById(gridId);
+    if (!grid) return;
+    BG_SWATCHES.forEach(color => {
+      const btn = document.createElement('button');
+      btn.className = 'bg-swatch' + (color === S.bgColor ? ' active' : '');
+      btn.style.background = color;
+      btn.style.border = color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent';
+      btn.title = color;
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.bg-swatch').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.bg-swatch').forEach(b => {
+          if (b.title === color) b.classList.add('active');
+        });
+        setBgColor(color);
+      });
+      grid.appendChild(btn);
     });
-    grid.appendChild(btn);
   });
-  document.getElementById('bgColorPicker')?.addEventListener('input', e => {
-    setBgColor(e.target.value);
-    document.querySelectorAll('.bg-swatch').forEach(b => b.classList.remove('active'));
+
+  // Color picker sync
+  ['bgColorPicker', 'fbsBgColorPicker'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', e => {
+      setBgColor(e.target.value);
+      document.querySelectorAll('.bg-swatch').forEach(b => b.classList.remove('active'));
+    });
   });
-  document.getElementById('slPadding')?.addEventListener('input', e => {
-    S.padding = parseInt(e.target.value);
-    const v = document.getElementById('valPadding'); if (v) v.textContent = S.padding + 'px';
-    redrawPhoto(); fitToScreen();
+
+  // Padding slider sync
+  ['slPadding', 'fbsSlPadding'].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', e => {
+      S.padding = parseInt(e.target.value);
+      ['valPadding','fbsValPadding'].forEach(vid => {
+        const el = document.getElementById(vid); if (el) el.textContent = S.padding + 'px';
+      });
+      ['slPadding','fbsSlPadding'].forEach(sid => {
+        const sl = document.getElementById(sid); if (sl) sl.value = S.padding;
+      });
+      redrawPhoto(); fitToScreen();
+    });
   });
 }
 
 function setBgColor(c) {
   S.bgColor = c;
-  const p = document.getElementById('bgColorPicker'); if (p) p.value = c;
+  ['bgColorPicker','fbsBgColorPicker'].forEach(id => {
+    const p = document.getElementById(id); if (p) p.value = c;
+  });
   redrawPhoto();
 }
 
-// ─── UPLOAD FRAME ────────────────────────────────────────────
+// ─── UPLOAD FRAME ─────────────────────────────────────────
 function setupUpload() {
-  const zone  = document.getElementById('uploadZone');
-  const input = zone ? zone.querySelector('input[type="file"]') : document.getElementById('frameFileInput');
-  if (zone) {
-    zone.addEventListener('click', () => input && input.click());
-    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
-    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
-    zone.addEventListener('drop', e => {
-      e.preventDefault(); zone.classList.remove('dragover');
-      [...e.dataTransfer.files].forEach(handleFrameFile);
+  ['uploadZone', 'fbsUploadZone'].forEach(zoneId => {
+    const zone  = document.getElementById(zoneId);
+    if (!zone) return;
+    const input = zone.querySelector('input[type="file"]');
+    zone.addEventListener('click', () => input?.click());
+    if (zoneId === 'uploadZone') {
+      zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+      zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+      zone.addEventListener('drop', e => {
+        e.preventDefault(); zone.classList.remove('dragover');
+        [...e.dataTransfer.files].forEach(handleFrameFile);
+      });
+    }
+    if (input) input.addEventListener('change', e => {
+      [...e.target.files].forEach(handleFrameFile); input.value = '';
     });
-  }
-  if (input) input.addEventListener('change', e => { [...e.target.files].forEach(handleFrameFile); input.value = ''; });
+  });
 }
 
 function handleFrameFile(file) {
@@ -739,13 +794,17 @@ function handleFrameFile(file) {
     try {
       const orient  = img.naturalWidth >= img.naturalHeight ? 'landscape' : 'portrait';
       const localId = 'local-' + Date.now();
-      const frameObj = { id: localId, name: cleanFileName(file.name), orient, src: objectUrl, thumb: objectUrl, _objUrl: objectUrl };
+      const frameObj = {
+        id: localId, name: cleanFileName(file.name), orient,
+        src: objectUrl, thumb: objectUrl, _objUrl: objectUrl
+      };
       S.frames.push(frameObj);
       renderFrameGrid();
       showToast('✓ Frame berhasil ditambahkan!');
       uploadToServer(file, frameObj);
     } catch (err) {
-      console.error(err); URL.revokeObjectURL(objectUrl); showToast('❌ Kesalahan saat memproses');
+      console.error(err); URL.revokeObjectURL(objectUrl);
+      showToast('❌ Kesalahan saat memproses');
     }
   };
   img.onerror = () => { URL.revokeObjectURL(objectUrl); showToast('❌ File PNG tidak valid'); };
@@ -753,7 +812,9 @@ function handleFrameFile(file) {
 }
 
 function cleanFileName(fn) {
-  return fn.replace(/\.png$/i, '').replace(/[-_]+/g, ' ').replace(/\b\w/g, c => c.toUpperCase()).trim() || 'Custom Frame';
+  return fn.replace(/\.png$/i, '')
+    .replace(/[-_]+/g, ' ')
+    .replace(/\b\w/g, c => c.toUpperCase()).trim() || 'Custom Frame';
 }
 
 async function uploadToServer(file, frameObj) {
@@ -764,8 +825,15 @@ async function uploadToServer(file, frameObj) {
     const data = await res.json();
     if (data.success) {
       const idx = S.frames.findIndex(f => f.id === frameObj.id);
-      if (idx !== -1) S.frames[idx] = { id: 'srv-' + data.frame_id, srvId: data.frame_id, name: data.name, orient: data.orient || frameObj.orient, src: data.path, thumb: data.thumbnail || data.path };
-      if (S.activeFrame?.id === frameObj.id) { S.activeFrame.id = 'srv-' + data.frame_id; S.activeFrame.srvId = data.frame_id; }
+      if (idx !== -1) S.frames[idx] = {
+        id: 'srv-' + data.frame_id, srvId: data.frame_id,
+        name: data.name, orient: data.orient || frameObj.orient,
+        src: data.path, thumb: data.thumbnail || data.path
+      };
+      if (S.activeFrame?.id === frameObj.id) {
+        S.activeFrame.id = 'srv-' + data.frame_id;
+        S.activeFrame.srvId = data.frame_id;
+      }
       renderFrameGrid(); showToast('☁️ Frame tersimpan ke server');
     } else {
       showToast('⚠️ Tersimpan lokal (' + (data.error || 'server error') + ')');
@@ -784,26 +852,12 @@ async function deleteFrame(localId, srvId) {
   renderFrameGrid(); showToast('🗑 Frame dihapus');
 }
 
-// ─── TABS ────────────────────────────────────────────────────
-function setupTabs() {
-  document.querySelectorAll('.panel-tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.panel-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
-      tab.classList.add('active');
-      const content = document.getElementById(`tab-${tab.dataset.tab}`);
-      if (content) content.classList.add('active');
-    });
-  });
-}
-
-// ─── RENDER FRAME TO CANVAS ───────────────────────────────────
+// ─── RENDER FRAME TO CANVAS (export) ─────────────────────
 function renderFrameToCanvas(octx, oc) {
   if (!S.activeFrame?.img) return;
   const img = S.activeFrame.img;
   const cw = oc.width, ch = oc.height;
-  const fw = img.naturalWidth  || cw;
-  const fh = img.naturalHeight || ch;
+  const fw = img.naturalWidth || cw, fh = img.naturalHeight || ch;
   const containScale = Math.min(cw / fw, ch / fh);
   const drawW = fw * containScale * S.frameScale;
   const drawH = fh * containScale * S.frameScale;
@@ -817,31 +871,26 @@ function renderFrameToCanvas(octx, oc) {
   octx.restore();
 }
 
-// ─── DOWNLOAD PREVIEW ────────────────────────────────────────
+// ─── DOWNLOAD PREVIEW ────────────────────────────────────
 async function downloadPreview() {
   showToast('⏳ Menyiapkan preview…');
-  const oc   = document.createElement('canvas');
-  oc.width   = photoCanvas.width;
-  oc.height  = photoCanvas.height;
+  const oc = document.createElement('canvas');
+  oc.width = photoCanvas.width; oc.height = photoCanvas.height;
   const octx = oc.getContext('2d');
   octx.drawImage(photoCanvas, 0, 0);
   renderFrameToCanvas(octx, oc);
-
-  oc.toBlob((blob) => {
+  oc.toBlob(blob => {
     if (!blob) { showToast('❌ Gagal buat preview'); return; }
-    const url  = URL.createObjectURL(blob);
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.download = 'balisadhu-preview.jpg';
-    link.href = url;
-    link.click();
+    link.download = 'balisadhu-preview.jpg'; link.href = url; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 10000);
     showToast('✓ Preview didownload');
   }, 'image/jpeg', 0.92);
 }
-
 document.getElementById('btnDownload')?.addEventListener('click', downloadPreview);
 
-// ─── TOAST ───────────────────────────────────────────────────
+// ─── TOAST ───────────────────────────────────────────────
 function showToast(msg) {
   const el = document.getElementById('toast');
   if (!el) return;
@@ -850,128 +899,24 @@ function showToast(msg) {
   _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
 }
 
-// ─── BOTTOM SHEET MOBILE ─────────────────────────────────────
-function setupFrameBottomSheet() {
+// ─── BOTTOM SHEET (Mobile) ───────────────────────────────
+function setupBottomSheet() {
   const sheet = document.getElementById('frameBottomSheet');
   if (!sheet) return;
 
-  document.querySelectorAll('.fbs-tab-btn').forEach(btn => {
-    btn.addEventListener('click', e => {
-      e.stopPropagation();
-      document.querySelectorAll('.fbs-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.fbs-panel').forEach(p => p.classList.remove('active'));
-      btn.classList.add('active');
-      const panel = document.getElementById(`fbs-${btn.dataset.fbs}`);
-      if (panel) panel.classList.add('active');
-      if (!sheet.classList.contains('expanded')) sheet.classList.add('expanded');
-    });
+  // Handle click — toggle expand
+  document.getElementById('fbsHandle')?.addEventListener('click', () => {
+    sheet.classList.toggle('expanded');
   });
 
-  document.getElementById('fbsHandle')?.addEventListener('click', () => sheet.classList.toggle('expanded'));
-
-  const sliders = [
-    { id: 'fbsSlOpacity', val: 'fbsValOpacity', fmt: v => v + '%',  apply: v => { S.frameOpacity = v / 100; refreshFrameStyle(); } },
-    { id: 'fbsSlScale',   val: 'fbsValScale',   fmt: v => v + '%',  apply: v => { S.frameScale   = v / 100; refreshFrameStyle(); } },
-    { id: 'fbsSlRotate',  val: 'fbsValRotate',  fmt: v => v + '°',  apply: v => { S.frameRotate  = v; syncRotateSlider(); refreshFrameStyle(); } },
-    { id: 'fbsSlPadding', val: 'fbsValPadding', fmt: v => v + 'px', apply: v => {
-      S.padding = v;
-      const el = document.getElementById('valPadding'); if (el) el.textContent = v + 'px';
-      const sl = document.getElementById('slPadding'); if (sl) sl.value = v;
-      redrawPhoto(); fitToScreen();
-    }},
-  ];
-  sliders.forEach(({ id, val, fmt, apply }) => {
-    const sl = document.getElementById(id), vl = document.getElementById(val);
-    if (!sl) return;
-    sl.addEventListener('input', () => { const v = parseInt(sl.value); if (vl) vl.textContent = fmt(v); apply(v); });
-  });
-
-  document.getElementById('fbsBtnRotL')?.addEventListener('click',     () => { S.frameRotate = ((S.frameRotate - 90 + 540) % 360) - 180; syncRotateSlider(); syncFbsRotate(); refreshFrameStyle(); });
-  document.getElementById('fbsBtnRotR')?.addEventListener('click',     () => { S.frameRotate = ((S.frameRotate + 90 + 180) % 360) - 180; syncRotateSlider(); syncFbsRotate(); refreshFrameStyle(); });
-  document.getElementById('fbsBtnRotReset')?.addEventListener('click', () => { S.frameRotate = 0; syncRotateSlider(); syncFbsRotate(); refreshFrameStyle(); });
-
-  document.getElementById('fbsBtnFlipH')?.addEventListener('click', () => {
-    S.frameFlipH = !S.frameFlipH;
-    const b = document.getElementById('fbsBtnFlipH');
-    if (b) { b.style.color = S.frameFlipH ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipH ? 'var(--gold)' : ''; }
-    refreshFrameStyle();
-  });
-  document.getElementById('fbsBtnFlipV')?.addEventListener('click', () => {
-    S.frameFlipV = !S.frameFlipV;
-    const b = document.getElementById('fbsBtnFlipV');
-    if (b) { b.style.color = S.frameFlipV ? 'var(--gold)' : ''; b.style.borderColor = S.frameFlipV ? 'var(--gold)' : ''; }
-    refreshFrameStyle();
-  });
-
-  document.querySelectorAll('#fbs-adjust .pos-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#fbs-adjust .pos-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); applyPositionPreset(btn.dataset.pos);
-    });
-  });
-  document.querySelectorAll('#fbs-frames .orient-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('#fbs-frames .orient-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active'); S.filterOrient = btn.dataset.orient; renderFrameGrid();
-    });
-  });
-
-  const fbsZone  = document.getElementById('fbsUploadZone');
-  const fbsInput = document.getElementById('fbsFrameFileInput');
-  if (fbsZone && fbsInput) {
-    fbsZone.addEventListener('click', () => fbsInput.click());
-    fbsInput.addEventListener('change', e => { [...e.target.files].forEach(handleFrameFile); fbsInput.value = ''; });
-  }
-
-  const fbsSwatches = document.getElementById('fbsBgSwatches');
-  if (fbsSwatches) {
-    BG_SWATCHES.forEach(color => {
-      const btn = document.createElement('button');
-      btn.className = 'bg-swatch';
-      btn.style.background = color;
-      btn.style.border = color === '#ffffff' ? '2px solid rgba(255,255,255,0.3)' : '2px solid transparent';
-      btn.addEventListener('click', () => setBgColor(color));
-      fbsSwatches.appendChild(btn);
-    });
-  }
-  document.getElementById('fbsBgColorPicker')?.addEventListener('input', e => setBgColor(e.target.value));
-}
-
-function syncFbsRotate() {
-  const sl = document.getElementById('fbsSlRotate');
-  const vl = document.getElementById('fbsValRotate');
-  if (sl) sl.value = S.frameRotate;
-  if (vl) vl.textContent = S.frameRotate + '°';
-}
-
-function renderFbsFrameGrid() {
-  const grid = document.getElementById('fbsFramesGrid');
-  if (!grid) return;
-  grid.innerHTML = '';
-  const filter  = S.filterOrient;
-  const visible = S.frames.filter(f => filter === 'all' || f.orient === filter);
-  if (!visible.length) {
-    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;font-size:14px;color:var(--text-dim);padding:24px 0;line-height:1.8;">Belum ada frame<br><span style="color:var(--gold);opacity:0.8;">Upload PNG di bawah ↓</span></div>`;
-    return;
-  }
-  visible.forEach(frame => {
-    const isActive = S.activeFrame?.id === frame.id;
-    const card = document.createElement('div');
-    card.className = 'frame-thumb-card' + (frame.orient === 'landscape' ? ' landscape' : '') + (isActive ? ' active' : '');
-    card.style.background = '#111';
-    const img = document.createElement('img');
-    img.src = frame.thumb || frame.src; img.alt = frame.name; img.loading = 'lazy';
-    img.style.cssText = 'width:100%;height:100%;object-fit:cover;';
-    card.appendChild(img);
-    const nameEl = document.createElement('div');
-    nameEl.className = 'card-name'; nameEl.textContent = frame.name;
-    card.appendChild(nameEl);
-    card.addEventListener('click', () => applyFrame(frame));
-    grid.appendChild(card);
+  // Tab button juga expand
+  document.getElementById('fbsMainBtn')?.addEventListener('click', e => {
+    e.stopPropagation();
+    if (!sheet.classList.contains('expanded')) sheet.classList.add('expanded');
   });
 }
 
-// ─── EXPOSE ──────────────────────────────────────────────────
+// ─── EXPOSE GLOBALS ──────────────────────────────────────
 window.removeActiveFrame   = removeActiveFrame;
 window.resetFrameTransform = resetFrameTransform;
 window.goToPrint           = goToPrint;
