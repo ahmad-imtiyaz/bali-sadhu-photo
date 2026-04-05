@@ -1,8 +1,8 @@
 /* ============================================================
    edit.js — Bali Sadhu Photo | Image Editor Logic
-   v5.1 — FIX: Hapus crossOrigin anonymous (penyebab gagal load)
-           FIX: Load gambar dari server path tanpa CORS issue
-           FIX: Crop blur — crop dari gambar asli resolusi penuh
+   v6.0 — Simplified: Single "Edit" tab
+           Basic adjustments (7 sliders) + Crop merged
+           Removed: Histogram, Filters, Color, Detail/Info sections
    ============================================================ */
 
 // ─── PRINT SIZE DEFINITIONS ───────────────────────────────
@@ -30,12 +30,10 @@ const state = {
   rotation: 0, flipH: false, flipV: false,
   zoom: 1, panX: 0, panY: 0,
 
+  // Basic adjustments only
   brightness: 0, contrast: 0, saturation: 0, warmth: 0,
-  exposure: 0, highlights: 0, shadows: 0, hue: 0,
-  tint: 0, vibrance: 0, sharpness: 0, vignette: 0,
-  noise: 0, blur: 0,
+  exposure: 0, highlights: 0, shadows: 0,
 
-  activeFilter: 'none',
   cropMode: false, cropSizeId: '4R', cropOrientation: 'portrait',
   renderPending: false,
 
@@ -52,11 +50,8 @@ function snapshotState(includeImage = false) {
     brightness: state.brightness, contrast: state.contrast,
     saturation: state.saturation, warmth: state.warmth,
     exposure: state.exposure, highlights: state.highlights,
-    shadows: state.shadows, hue: state.hue, tint: state.tint,
-    vibrance: state.vibrance, sharpness: state.sharpness,
-    vignette: state.vignette, noise: state.noise, blur: state.blur,
+    shadows: state.shadows,
     rotation: state.rotation, flipH: state.flipH, flipV: state.flipV,
-    activeFilter: state.activeFilter,
     cropSizeId: state.cropSizeId, cropOrientation: state.cropOrientation,
     imageDataURL: includeImage && state.originalImage ? imageToDataURL(state.originalImage) : null,
   };
@@ -68,24 +63,20 @@ function imageToDataURL(img) {
   const c = tmp.getContext('2d');
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   c.drawImage(img, 0, 0);
-  return tmp.toDataURL('image/jpeg', 0.88); // ← JPEG, bukan PNG
+  return tmp.toDataURL('image/jpeg', 0.88);
 }
 
-const MAX_HISTORY = 20; // cukup untuk undo/redo wajar
+const MAX_HISTORY = 20;
 
 function pushHistory(includeImage = false) {
   if (history._saving) return;
   history.stack.splice(history.pointer + 1);
   history.stack.push(snapshotState(includeImage));
-  
-  // Buang history paling lama kalau sudah melebihi batas
   if (history.stack.length > MAX_HISTORY) {
     history.stack.shift();
   } else {
     history.pointer = history.stack.length - 1;
   }
-  
-  // pointer selalu di ujung
   history.pointer = history.stack.length - 1;
   updateUndoRedoBtns();
 }
@@ -100,10 +91,9 @@ function restoreSnapshot(snap) {
     loadImageFromSrc(snap.imageDataURL, (img) => {
       state.originalImage = img;
       canvas.width = img.naturalWidth; canvas.height = img.naturalHeight;
-      setDetailText('info-dimensions', `${img.naturalWidth} × ${img.naturalHeight}`);
       applySnapAdjustments(snap);
       history._saving = false;
-      setZoomFit(); scheduleRender(); setupFilters();
+      setZoomFit(); scheduleRender();
     });
   } else {
     applySnapAdjustments(snap);
@@ -113,24 +103,20 @@ function restoreSnapshot(snap) {
 }
 
 function applySnapAdjustments(snap) {
-  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows',
-   'hue','tint','vibrance','sharpness','vignette','noise','blur'].forEach(k => {
+  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows'].forEach(k => {
     state[k] = snap[k] ?? 0;
     const sl = document.getElementById(`sl-${k}`); if (sl) sl.value = state[k];
     const val = document.getElementById(`val-${k}`); if (val) val.textContent = formatSliderVal(k, state[k]);
   });
   state.rotation = snap.rotation ?? 0; state.flipH = snap.flipH ?? false; state.flipV = snap.flipV ?? false;
-  state.activeFilter = snap.activeFilter ?? 'none';
   state.cropSizeId = snap.cropSizeId ?? '4R'; state.cropOrientation = snap.cropOrientation ?? 'portrait';
-  document.querySelectorAll('.filter-item').forEach(el => el.classList.toggle('active', el.dataset.id === state.activeFilter));
   document.querySelectorAll('.crop-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.id === state.cropSizeId));
   setOrientation(state.cropOrientation);
-  updateInfoPanel(); updateCropSizeInfo(); updateUndoRedoBtns();
+  updateCropSizeInfo(); updateUndoRedoBtns();
 }
 
 function formatSliderVal(key, v) {
-  return ['sharpness','vignette','noise','blur'].includes(key)
-    ? Math.round(v) : (v >= 0 ? `+${Math.round(v)}` : `${Math.round(v)}`);
+  return (v >= 0 ? `+${Math.round(v)}` : `${Math.round(v)}`);
 }
 
 function updateUndoRedoBtns() {
@@ -141,15 +127,13 @@ function updateUndoRedoBtns() {
 // ─── DOM ──────────────────────────────────────────────────
 const canvas        = document.getElementById('mainCanvas');
 const ctx           = canvas.getContext('2d', { willReadFrequently: true });
-const histCanvas    = document.getElementById('histogramCanvas');
-const histCtx       = histCanvas.getContext('2d');
 const canvasWrapper = document.getElementById('canvasWrapper');
 const zoomLevelEl   = document.getElementById('zoomLevel');
 
 // ─── INIT ─────────────────────────────────────────────────
 (function init() {
   loadImageFromSession();
-  setupTabSwitching(); setupSliders(); setupToolbarButtons();
+  setupSliders(); setupToolbarButtons();
   setupZoom(); setupPan(); setupTouchPanZoom();
   setupCrop(); buildCropPresetButtons(); setupCropPresetEvents();
   setupKeyboardShortcuts(); setupBottomSheet(); loadSessionFromServer();
@@ -165,10 +149,11 @@ function setupKeyboardShortcuts() {
   });
 }
 
-// ─── BOTTOM SHEET ─────────────────────────────────────────
+// ─── BOTTOM SHEET (mobile) ────────────────────────────────
 function setupBottomSheet() {
   const sheet = document.getElementById('bottomSheet'); if (!sheet) return;
   document.getElementById('sheetHandle').addEventListener('click', () => sheet.classList.toggle('expanded'));
+  // Single tab — no switching needed, but keep event handler for future safety
   document.querySelectorAll('.sheet-tab-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -186,18 +171,12 @@ function syncSheetSliders() {
   document.querySelectorAll('.sheet-slider').forEach(sl => {
     const key = sl.dataset.adj; if (!key) return;
     sl.value = state[key] || 0;
-    const isHeavy = ['hue', 'sharpness', 'tint', 'vibrance'].includes(key);
     sl.addEventListener('input', () => {
       const v = parseFloat(sl.value); state[key] = v;
       const mainSl = document.getElementById(`sl-${key}`); if (mainSl) mainSl.value = v;
       const valEl  = document.getElementById(`val-${key}`);  if (valEl)  valEl.textContent  = formatSliderVal(key, v);
       const sValEl = document.getElementById(`sval-${key}`); if (sValEl) sValEl.textContent = formatSliderVal(key, v);
-      if (isHeavy) {
-        clearTimeout(sl._t);
-        sl._t = setTimeout(() => scheduleRender(), 150);
-      } else {
-        scheduleRender();
-      }
+      scheduleRender();
       clearTimeout(sl._th); sl._th = setTimeout(() => pushHistory(), 600);
     });
   });
@@ -215,8 +194,7 @@ async function loadSessionFromServer() {
 }
 
 function restoreEditState(ed) {
-  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows',
-   'hue','tint','vibrance','sharpness','vignette','noise','blur'].forEach(k => {
+  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows'].forEach(k => {
     if (ed[k] !== undefined) {
       state[k] = ed[k];
       const sl = document.getElementById(`sl-${k}`); if (sl) sl.value = ed[k];
@@ -226,7 +204,6 @@ function restoreEditState(ed) {
   if (ed.rotation !== undefined) state.rotation = ed.rotation;
   if (ed.flipH !== undefined) state.flipH = ed.flipH;
   if (ed.flipV !== undefined) state.flipV = ed.flipV;
-  if (ed.activeFilter !== undefined) state.activeFilter = ed.activeFilter;
   if (ed.cropSizeId !== undefined) {
     state.cropSizeId = ed.cropSizeId;
     document.querySelectorAll('.crop-preset-btn').forEach(b => b.classList.toggle('active', b.dataset.id === state.cropSizeId));
@@ -245,27 +222,16 @@ async function saveSessionToServer(status = 'editing') {
         edit_data: {
           brightness: state.brightness, contrast: state.contrast, saturation: state.saturation,
           warmth: state.warmth, exposure: state.exposure, highlights: state.highlights,
-          shadows: state.shadows, hue: state.hue, tint: state.tint, vibrance: state.vibrance,
-          sharpness: state.sharpness, vignette: state.vignette, noise: state.noise, blur: state.blur,
+          shadows: state.shadows,
           rotation: state.rotation, flipH: state.flipH, flipV: state.flipV,
-          activeFilter: state.activeFilter, cropSizeId: state.cropSizeId, cropOrientation: state.cropOrientation,
+          cropSizeId: state.cropSizeId, cropOrientation: state.cropOrientation,
         }
       }),
     });
   } catch (e) { console.warn('Gagal simpan sesi:', e); }
 }
 
-// ─── LOAD IMAGE — FIX UTAMA v5.1 ─────────────────────────
-/*
- * MASALAH v5.0: crossOrigin='anonymous' menyebabkan browser
- * throw SecurityError saat server tidak kirim CORS header.
- * FIX: HAPUS crossOrigin sepenuhnya — same-origin request tidak butuh ini.
- *
- * PRIORITAS:
- * 1. bsp_serverPath → URL relatif ke root site (uploads/xxx.jpg)
- * 2. bsp_imageSrc   → base64 fallback (file kecil < 4MB)
- * 3. Tidak ada      → redirect index
- */
+// ─── LOAD IMAGE ───────────────────────────────────────────
 function loadImageFromSession() {
   const serverPath = sessionStorage.getItem('bsp_serverPath');
   const base64Src  = sessionStorage.getItem('bsp_imageSrc');
@@ -283,9 +249,6 @@ function loadImageFromSession() {
   state.photoId = parseInt(sessionStorage.getItem('bsp_photoId') || '0') || null;
 
   const el = document.getElementById('imageFileName'); if (el) el.textContent = name;
-  setDetailText('info-filename', name);
-  setDetailText('info-filesize', formatBytes(state.fileSize));
-  setDetailText('info-format', (type.split('/')[1] || 'Unknown').toUpperCase());
 
   showLoadingOverlay(true);
 
@@ -306,13 +269,7 @@ function loadImageFromSession() {
   };
 
   if (serverPath) {
-    /*
-     * Bangun URL:
-     * - "uploads/xxx.jpg" → pakai relatif langsung (same-origin, paling aman)
-     * - Tidak prefix dengan "/" karena PHP app bisa di subfolder
-     */
-    const imgUrl = serverPath.startsWith('http') ? serverPath : serverPath;
-    tryLoad(imgUrl, base64Src || null);
+    tryLoad(serverPath.startsWith('http') ? serverPath : serverPath, base64Src || null);
   } else {
     tryLoad(base64Src, null);
   }
@@ -323,38 +280,27 @@ function redirectToIndex() {
   setTimeout(() => { window.location.href = 'index.php'; }, 1500);
 }
 
-/*
- * loadImageFromSrc — TANPA crossOrigin (ini fix kunci v5.1)
- * crossOrigin hanya diperlukan untuk gambar dari domain lain (CDN).
- * Untuk same-origin (server sendiri), crossOrigin justru menyebabkan error.
- */
 function loadImageFromSrc(src, onLoad, onError) {
   const img = new Image();
-  img.onload  = () => {
-    console.log('Image loaded:', img.naturalWidth, img.naturalHeight); // cek ini
-    if (typeof onLoad === 'function') onLoad(img);
-  };
+  img.onload  = () => { if (typeof onLoad === 'function') onLoad(img); };
   img.onerror = () => { if (typeof onError === 'function') onError(); };
   img.src = src;
 }
 
 async function onImageReady(img) {
   state.trueOriginalImage = img;
-  state.previewImage = await createPreviewImage(img);  // tunggu sampai selesai
+  state.previewImage = await createPreviewImage(img);
   state.originalImage = state.previewImage;
   state.previewScale = state.previewImage.naturalWidth / img.naturalWidth;
 
   canvas.width  = state.previewImage.naturalWidth;
   canvas.height = state.previewImage.naturalHeight;
-  setDetailText('info-dimensions', `${img.naturalWidth} × ${img.naturalHeight}`);
-  setZoomFit(); renderCanvas(); drawHistogram();
-  setupFilters(); updateInfoPanel(); updateCropSizeInfo(); pushHistory(true);
+  setZoomFit(); renderCanvas(); pushHistory(true);
 }
 
 function createPreviewImage(img) {
   const MAX = 1400;
   const scale = Math.min(1, MAX / Math.max(img.naturalWidth, img.naturalHeight));
-  console.log('createPreviewImage called, scale:', scale, img.naturalWidth, img.naturalHeight);
   if (scale >= 1) return Promise.resolve(img);
 
   const tmp = document.createElement('canvas');
@@ -380,27 +326,20 @@ function showLoadingOverlay(show) {
       font-family:'DM Sans',sans-serif;color:#E8E0D0;font-size:14px;`;
     o.innerHTML = `<div style="width:44px;height:44px;border:3px solid #333;border-top-color:#C9A84C;
       border-radius:50%;animation:bspSpin 0.8s linear infinite;"></div>
-      <span>Memuat foto resolusi penuh...</span>
+      <span>Memuat foto...</span>
       <style>@keyframes bspSpin{to{transform:rotate(360deg)}}</style>`;
     document.body.appendChild(o);
   }
   o.style.display = show ? 'flex' : 'none';
 }
 
-function setDetailText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
-
 // ─── RENDER ───────────────────────────────────────────────
-let _histTimer = null;
-
 function scheduleRender() {
   if (state.renderPending) return;
   state.renderPending = true;
   requestAnimationFrame(() => {
     state.renderPending = false;
     renderCanvas();
-    // Histogram tidak perlu update real-time — delay 800ms setelah stop
-    clearTimeout(_histTimer);
-    _histTimer = setTimeout(() => drawHistogram(), 800);
   });
 }
 
@@ -416,16 +355,6 @@ function renderCanvas() {
   id = applyPixelAdjustments(id);
   offCtx.putImageData(id, 0, 0);
 
-  if (state.blur > 0) applyBlur(offCtx, srcW, srcH, state.blur * 0.5);
-
-  if (state.vignette > 0) {
-    const grad = offCtx.createRadialGradient(srcW/2,srcH/2,Math.min(srcW,srcH)*0.25,srcW/2,srcH/2,Math.max(srcW,srcH)*0.85);
-    grad.addColorStop(0,'rgba(0,0,0,0)'); grad.addColorStop(1,`rgba(0,0,0,${(state.vignette/100*0.9).toFixed(2)})`);
-    offCtx.fillStyle = grad; offCtx.fillRect(0,0,srcW,srcH);
-  }
-
-  applyFilterPreset(offCtx, srcW, srcH);
-
   const rotated = (state.rotation===90||state.rotation===270);
   canvas.width = rotated ? srcH : srcW; canvas.height = rotated ? srcW : srcH;
   ctx.save();
@@ -439,12 +368,12 @@ function renderCanvas() {
   updateCanvasTransform();
 }
 
-// ─── PIXEL ADJUSTMENTS ────────────────────────────────────
+// ─── PIXEL ADJUSTMENTS (Basic 7 only) ────────────────────
 function applyPixelAdjustments(imageData) {
   const data=imageData.data, len=data.length;
   const bright=state.brightness/100, cont=state.contrast, sat=state.saturation/100;
-  const warm=state.warmth/100, expo=state.exposure/100, high=state.highlights/100;
-  const shad=state.shadows/100, hueRot=state.hue, tint=state.tint/100, vibr=state.vibrance/100;
+  const warm=state.warmth/100, expo=state.exposure/100;
+  const high=state.highlights/100, shad=state.shadows/100;
   const contFactor = cont!==0 ? (259*(cont+255))/(255*(259-cont)) : 1;
 
   for (let i=0;i<len;i+=4) {
@@ -456,91 +385,13 @@ function applyPixelAdjustments(imageData) {
     if(high!==0&&lum>0.5){const hf=(lum-0.5)*2*high*90;r=clamp(r+hf);g=clamp(g+hf);b=clamp(b+hf);}
     if(shad!==0&&lum<0.5){const sf=(0.5-lum)*2*shad*90;r=clamp(r+sf);g=clamp(g+sf);b=clamp(b+sf);}
     if(warm!==0){r=clamp(r+warm*45);b=clamp(b-warm*45);g=clamp(g+warm*8);}
-    if(tint!==0){g=clamp(g+tint*40);r=clamp(r-tint*15);b=clamp(b-tint*15);}
     if(sat!==0){const gray=r*0.299+g*0.587+b*0.114;r=clamp(gray+(r-gray)*(1+sat));g=clamp(gray+(g-gray)*(1+sat));b=clamp(gray+(b-gray)*(1+sat));}
-    if(vibr!==0){const mx=Math.max(r,g,b),mn=Math.min(r,g,b),cs=mx===0?0:(mx-mn)/mx,boost=(1-cs)*vibr*0.9,g2=r*0.299+g*0.587+b*0.114;r=clamp(g2+(r-g2)*(1+boost));g=clamp(g2+(g-g2)*(1+boost));b=clamp(g2+(b-g2)*(1+boost));}
-    if(hueRot!==0){const [h,s,l]=rgbToHsl(r,g,b),newH=((h+hueRot/360)%1+1)%1;[r,g,b]=hslToRgb(newH,s,l);}
     data[i]=r;data[i+1]=g;data[i+2]=b;
-  }
-
-  if (state.sharpness>0) {
-    const strength=state.sharpness/100*2, w=imageData.width, h=imageData.height;
-    const copy=new Uint8ClampedArray(data);
-    for(let y=1;y<h-1;y++) for(let x=1;x<w-1;x++) {
-      const idx=(y*w+x)*4;
-      for(let c=0;c<3;c++){const center=copy[idx+c],avg=(copy[((y-1)*w+x)*4+c]+copy[((y+1)*w+x)*4+c]+copy[(y*w+x-1)*4+c]+copy[(y*w+x+1)*4+c])/4;data[idx+c]=clamp(center+(center-avg)*strength);}
-    }
   }
   return imageData;
 }
 
 function clamp(v){return v<0?0:v>255?255:Math.round(v);}
-function rgbToHsl(r,g,b){r/=255;g/=255;b/=255;const mx=Math.max(r,g,b),mn=Math.min(r,g,b);let h,s;const l=(mx+mn)/2;if(mx===mn){h=s=0;}else{const d=mx-mn;s=l>0.5?d/(2-mx-mn):d/(mx+mn);switch(mx){case r:h=(g-b)/d+(g<b?6:0);break;case g:h=(b-r)/d+2;break;default:h=(r-g)/d+4;}h/=6;}return[h,s,l];}
-function hslToRgb(h,s,l){if(s===0){const v=Math.round(l*255);return[v,v,v];}const q=l<0.5?l*(1+s):l+s-l*s,p=2*l-q,hue2rgb=(t)=>{if(t<0)t+=1;if(t>1)t-=1;if(t<1/6)return p+(q-p)*6*t;if(t<1/2)return q;if(t<2/3)return p+(q-p)*(2/3-t)*6;return p;};return[Math.round(hue2rgb(h+1/3)*255),Math.round(hue2rgb(h)*255),Math.round(hue2rgb(h-1/3)*255)];}
-function applyBlur(offCtx,w,h,radius){const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tc=tmp.getContext('2d');tc.imageSmoothingEnabled=true;tc.filter=`blur(${radius}px)`;tc.drawImage(offCtx.canvas,0,0);offCtx.clearRect(0,0,w,h);offCtx.drawImage(tmp,0,0);}
-
-// ─── FILTER PRESETS ───────────────────────────────────────
-const FILTERS = [
-  {id:'none',name:'Original',fn:null},
-  {id:'vivid',name:'Vivid',fn:(c,w,h)=>cssFilter(c,w,h,'saturate(1.6) contrast(1.12)')},
-  {id:'matte',name:'Matte',fn:matteFilter},
-  {id:'mono',name:'Mono',fn:(c,w,h)=>cssFilter(c,w,h,'grayscale(1)')},
-  {id:'fade',name:'Fade',fn:fadeFilter},
-  {id:'warm',name:'Warm',fn:(c,w,h)=>colorOverlay(c,w,h,255,200,150,0.18)},
-  {id:'cool',name:'Cool',fn:(c,w,h)=>colorOverlay(c,w,h,140,185,255,0.18)},
-  {id:'sepia',name:'Sepia',fn:(c,w,h)=>cssFilter(c,w,h,'sepia(0.85)')},
-  {id:'dramatic',name:'Dramatic',fn:(c,w,h)=>cssFilter(c,w,h,'contrast(1.45) brightness(0.82) saturate(0.65)')},
-  {id:'golden',name:'Golden',fn:(c,w,h)=>colorOverlay(c,w,h,255,215,120,0.28)},
-  {id:'teal',name:'Teal&Org',fn:tealOrangeFilter},
-  {id:'cinema',name:'Cinematic',fn:cinematicFilter},
-];
-function applyFilterPreset(offCtx,w,h){const f=FILTERS.find(f=>f.id===state.activeFilter);if(!f||!f.fn)return;f.fn(offCtx,w,h);}
-function cssFilter(offCtx,w,h,filter){const tmp=document.createElement('canvas');tmp.width=w;tmp.height=h;const tc=tmp.getContext('2d');tc.imageSmoothingEnabled=true;tc.imageSmoothingQuality='high';tc.filter=filter;tc.drawImage(offCtx.canvas,0,0);offCtx.clearRect(0,0,w,h);offCtx.drawImage(tmp,0,0);}
-function colorOverlay(offCtx,w,h,r,g,b,alpha){offCtx.fillStyle=`rgba(${r},${g},${b},${alpha})`;offCtx.fillRect(0,0,w,h);}
-function matteFilter(offCtx,w,h){const id=offCtx.getImageData(0,0,w,h);const d=id.data;for(let i=0;i<d.length;i+=4){d[i]=clamp(d[i]*0.82+32);d[i+1]=clamp(d[i+1]*0.82+28);d[i+2]=clamp(d[i+2]*0.82+38);}offCtx.putImageData(id,0,0);}
-function fadeFilter(offCtx,w,h){cssFilter(offCtx,w,h,'contrast(0.82) brightness(1.12) saturate(0.7)');offCtx.fillStyle='rgba(255,235,220,0.18)';offCtx.fillRect(0,0,w,h);}
-function tealOrangeFilter(offCtx,w,h){const id=offCtx.getImageData(0,0,w,h);const d=id.data;for(let i=0;i<d.length;i+=4){const lum=(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)/255;if(lum>0.5){d[i]=clamp(d[i]+25);d[i+2]=clamp(d[i+2]-25);}else{d[i]=clamp(d[i]-12);d[i+1]=clamp(d[i+1]+12);d[i+2]=clamp(d[i+2]+25);}}offCtx.putImageData(id,0,0);}
-function cinematicFilter(offCtx,w,h){cssFilter(offCtx,w,h,'contrast(1.18) saturate(0.88) brightness(0.93)');const barH=Math.round(h*0.055);offCtx.fillStyle='#000';offCtx.fillRect(0,0,w,barH);offCtx.fillRect(0,h-barH,w,barH);}
-
-// ─── FILTER SETUP ─────────────────────────────────────────
-function setupFilters() {
-  [document.getElementById('filterGrid'), document.getElementById('sheetFilterGrid')].forEach(g => {
-    if (!g) return; g.innerHTML = '';
-    FILTERS.forEach(f => {
-      const item = document.createElement('div');
-      item.className = 'filter-item'+(f.id===state.activeFilter?' active':''); item.dataset.id=f.id;
-      const fc = document.createElement('canvas'); renderFilterPreview(fc,f); item.appendChild(fc);
-      const label = document.createElement('div'); label.className='filter-name'; label.textContent=f.name; item.appendChild(label);
-      item.addEventListener('click', () => {
-        document.querySelectorAll('.filter-item').forEach(el=>el.classList.remove('active'));
-        document.querySelectorAll(`.filter-item[data-id="${f.id}"]`).forEach(el=>el.classList.add('active'));
-        state.activeFilter=f.id; setDetailText('info-filter',f.name); scheduleRender(); pushHistory();
-      });
-      g.appendChild(item);
-    });
-  });
-}
-
-function renderFilterPreview(fc,filter) {
-  if (!state.originalImage) return;
-  const img=state.originalImage, aspect=img.naturalWidth/img.naturalHeight;
-  fc.width=180; fc.height=Math.round(180/aspect);
-  const pc=fc.getContext('2d'); pc.imageSmoothingEnabled=true; pc.imageSmoothingQuality='high';
-  pc.drawImage(img,0,0,fc.width,fc.height);
-  if(filter.fn) filter.fn(pc,fc.width,fc.height);
-}
-
-// ─── HISTOGRAM ────────────────────────────────────────────
-function drawHistogram() {
-  if (!canvas.width||!canvas.height) return;
-  const W=histCanvas.width, H=histCanvas.height; histCtx.clearRect(0,0,W,H);
-  const id=ctx.getImageData(0,0,canvas.width,canvas.height), d=id.data;
-  const rH=new Uint32Array(256),gH=new Uint32Array(256),bH=new Uint32Array(256),lH=new Uint32Array(256);
-  for(let i=0;i<d.length;i+=4){rH[d[i]]++;gH[d[i+1]]++;bH[d[i+2]]++;lH[Math.round(d[i]*0.299+d[i+1]*0.587+d[i+2]*0.114)]++;}
-  const maxVal=Math.max(Math.max(...rH),Math.max(...gH),Math.max(...bH),Math.max(...lH)); if(!maxVal)return;
-  const drawCh=(hist,color)=>{histCtx.fillStyle=color;const bw=W/256;for(let i=0;i<256;i++){const bh=(hist[i]/maxVal)*H;histCtx.fillRect(i*bw,H-bh,bw+0.5,bh);}};
-  drawCh(lH,'rgba(255,255,255,0.18)');drawCh(rH,'rgba(255,80,80,0.55)');drawCh(gH,'rgba(80,210,80,0.55)');drawCh(bH,'rgba(80,130,255,0.55)');
-}
 
 // ─── ZOOM ─────────────────────────────────────────────────
 function setupZoom() {
@@ -585,10 +436,10 @@ function onTouchEnd(){state._lastPinchDist=0;}
 
 // ─── TOOLBAR BUTTONS ──────────────────────────────────────
 function setupToolbarButtons() {
-  document.getElementById('btnRotateCCW').addEventListener('click',()=>{state.rotation=(state.rotation-90+360)%360;updateInfoPanel();scheduleRender();pushHistory();});
-  document.getElementById('btnRotateCW').addEventListener('click',()=>{state.rotation=(state.rotation+90)%360;updateInfoPanel();scheduleRender();pushHistory();});
-  document.getElementById('btnFlipH').addEventListener('click',()=>{state.flipH=!state.flipH;updateInfoPanel();scheduleRender();pushHistory();});
-  document.getElementById('btnFlipV').addEventListener('click',()=>{state.flipV=!state.flipV;updateInfoPanel();scheduleRender();pushHistory();});
+  document.getElementById('btnRotateCCW').addEventListener('click',()=>{state.rotation=(state.rotation-90+360)%360;scheduleRender();pushHistory();});
+  document.getElementById('btnRotateCW').addEventListener('click',()=>{state.rotation=(state.rotation+90)%360;scheduleRender();pushHistory();});
+  document.getElementById('btnFlipH').addEventListener('click',()=>{state.flipH=!state.flipH;scheduleRender();pushHistory();});
+  document.getElementById('btnFlipV').addEventListener('click',()=>{state.flipV=!state.flipV;scheduleRender();pushHistory();});
   document.getElementById('btnReset').addEventListener('click',resetToTrueOriginal);
   document.getElementById('btnCrop').addEventListener('click',toggleCropMode);
   document.getElementById('btnUndo')?.addEventListener('click',undo);
@@ -600,67 +451,43 @@ async function resetToTrueOriginal() {
   if (!state.trueOriginalImage) return;
   if (!window.confirm('Reset akan mengembalikan foto ke kondisi awal. Lanjutkan?')) return;
 
-  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows',
-   'hue','tint','vibrance','sharpness','vignette','noise','blur'].forEach(k=>{
-    state[k]=0; const sl=document.getElementById(`sl-${k}`);if(sl)sl.value=0;
+  ['brightness','contrast','saturation','warmth','exposure','highlights','shadows'].forEach(k=>{
+    state[k]=0;
+    const sl=document.getElementById(`sl-${k}`);if(sl)sl.value=0;
     const val=document.getElementById(`val-${k}`);if(val)val.textContent=formatSliderVal(k,0);
+    // sync bottom sheet sliders
+    const sheetSl = document.querySelector(`.sheet-slider[data-adj="${k}"]`);if(sheetSl)sheetSl.value=0;
+    const sVal = document.getElementById(`sval-${k}`);if(sVal)sVal.textContent=formatSliderVal(k,0);
   });
-  state.rotation=0;state.flipH=false;state.flipV=false;state.activeFilter='none';
+  state.rotation=0;state.flipH=false;state.flipV=false;
   state.cropSizeId='4R';state.cropOrientation='portrait';
   state.previewImage  = await createPreviewImage(state.trueOriginalImage);
   state.originalImage = state.previewImage;
   state.previewScale  = state.previewImage.naturalWidth / state.trueOriginalImage.naturalWidth;
   canvas.width  = state.previewImage.naturalWidth;
   canvas.height = state.previewImage.naturalHeight;
-  document.querySelectorAll('.filter-item').forEach(el=>el.classList.remove('active'));
-  document.querySelector('.filter-item[data-id="none"]')?.classList.add('active');
   document.querySelectorAll('.crop-preset-btn').forEach(b=>b.classList.toggle('active',b.dataset.id==='4R'));
-  setOrientation('portrait'); setDetailText('info-filter','None');
-  setDetailText('info-dimensions',`${state.trueOriginalImage.naturalWidth} × ${state.trueOriginalImage.naturalHeight}`);
-  cancelCrop(); updateInfoPanel(); updateCropSizeInfo(); setZoomFit();
-  scheduleRender(); setupFilters();
+  setOrientation('portrait');
+  cancelCrop(); setZoomFit();
+  scheduleRender();
   history.stack=[]; history.pointer=-1; pushHistory();
   showToast('Foto dikembalikan ke kondisi awal ✓');
 }
 
 // ─── SLIDERS ──────────────────────────────────────────────
 function setupSliders() {
-  let timerLight = null;
-  let timerHeavy = null;
-
+  let timer = null;
   document.querySelectorAll('.slider[data-adj]').forEach(sl => {
     const key = sl.dataset.adj;
-    const isHeavy = ['hue', 'sharpness', 'tint', 'vibrance'].includes(key);
-
     sl.addEventListener('input', () => {
       const v = parseFloat(sl.value); state[key] = v;
       const valEl = document.getElementById(`val-${key}`); if (valEl) valEl.textContent = formatSliderVal(key, v);
+      // sync bottom sheet
       const sheetSl = document.querySelector(`.sheet-slider[data-adj="${key}"]`); if (sheetSl) sheetSl.value = v;
       const sValEl = document.getElementById(`sval-${key}`); if (sValEl) sValEl.textContent = formatSliderVal(key, v);
-
-      if (isHeavy) {
-        // Slider berat: tunda render sampai user berhenti geser 150ms
-        clearTimeout(timerHeavy);
-        timerHeavy = setTimeout(() => scheduleRender(), 150);
-      } else {
-        // Slider ringan: render langsung
-        scheduleRender();
-      }
-
-      clearTimeout(timerLight);
-      timerLight = setTimeout(() => pushHistory(), 600);
-    });
-  });
-}
-
-// ─── TAB SWITCHING ────────────────────────────────────────
-function setupTabSwitching() {
-  document.querySelectorAll('.panel-tab').forEach(tab=>{
-    tab.addEventListener('click',()=>{
-      document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(tc=>tc.classList.remove('active'));
-      tab.classList.add('active');
-      const target=document.getElementById(`tab-${tab.dataset.tab}`); if(target)target.classList.add('active');
+      scheduleRender();
+      clearTimeout(timer);
+      timer = setTimeout(() => pushHistory(), 600);
     });
   });
 }
@@ -714,7 +541,6 @@ function updateCropSizeInfo() {
 }
 
 function applyAutoCrop() {
-  
   if (!state.trueOriginalImage) return;
   const {rw,rh} = getCropRatio();
   const src = state.trueOriginalImage;
@@ -731,16 +557,15 @@ function applyAutoCrop() {
   const tmp=document.createElement('canvas'); tmp.width=cropW; tmp.height=cropH;
   const tc=tmp.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high';
   tc.drawImage(src, cropX,cropY,cropW,cropH, 0,0,cropW,cropH);
- loadImageFromSrc(tmp.toDataURL('image/png'), async (newFullRes) => {
+  loadImageFromSrc(tmp.toDataURL('image/png'), async (newFullRes) => {
     state.trueOriginalImage = newFullRes;
-    state.previewImage = await createPreviewImage(newFullRes); // ← await
+    state.previewImage = await createPreviewImage(newFullRes);
     state.originalImage = state.previewImage;
     state.previewScale = state.previewImage.naturalWidth / newFullRes.naturalWidth;
     canvas.width  = state.previewImage.naturalWidth;
     canvas.height = state.previewImage.naturalHeight;
-    setDetailText('info-dimensions', `${cropW} × ${cropH}`);
     showToast(`Auto crop ${getActivePrintSize().label} berhasil ✓`);
-    cancelCrop(); setZoomFit(); scheduleRender(); setupFilters(); pushHistory(true);
+    cancelCrop(); setZoomFit(); scheduleRender(); pushHistory(true);
   });
 }
 
@@ -791,7 +616,6 @@ function onCropMove(e) {
   updateCropBox();
 }
 
-/* MANUAL CROP FIX — crop dari originalImage resolusi penuh */
 function applyManualCrop() {
   if (!state.trueOriginalImage) return;
   const wRect = canvasWrapper.getBoundingClientRect();
@@ -810,49 +634,21 @@ function applyManualCrop() {
   const tmp=document.createElement('canvas'); tmp.width=safeW; tmp.height=safeH;
   const tc=tmp.getContext('2d'); tc.imageSmoothingEnabled=true; tc.imageSmoothingQuality='high';
   tc.drawImage(state.trueOriginalImage, safeX,safeY,safeW,safeH, 0,0,safeW,safeH);
-  loadImageFromSrc(tmp.toDataURL('image/png'), (newFullRes) => {
+  loadImageFromSrc(tmp.toDataURL('image/png'), async (newFullRes) => {
     state.trueOriginalImage = newFullRes;
-    state.previewImage = createPreviewImage(newFullRes);
+    state.previewImage = await createPreviewImage(newFullRes);
     state.originalImage = state.previewImage;
     state.previewScale = state.previewImage.naturalWidth / newFullRes.naturalWidth;
     canvas.width  = state.previewImage.naturalWidth;
     canvas.height = state.previewImage.naturalHeight;
-    setDetailText('info-dimensions', `${safeW} × ${safeH}`);
     showToast('Manual crop berhasil ✓');
-    cancelCrop(); setZoomFit(); scheduleRender(); setupFilters(); pushHistory();
+    cancelCrop(); setZoomFit(); scheduleRender(); pushHistory(true);
   });
 }
 
 function cancelCrop(){state.cropMode=false;document.getElementById('btnCrop')?.classList.remove('active');document.getElementById('cropOverlay')?.classList.add('hidden');}
 
-// ─── INFO PANEL ───────────────────────────────────────────
-function updateInfoPanel() {
-  setDetailText('info-rotation',state.rotation+'°');
-  const flips=[];if(state.flipH)flips.push('H');if(state.flipV)flips.push('V');
-  setDetailText('info-flip',flips.length?flips.join(', '):'None');
-}
-
 // ─── GO TO FRAME ──────────────────────────────────────────
-/* ============================================================
-   PATCH: edit.js — ganti fungsi goToFrame()
-   
-   MASALAH LAMA:
-     sessionStorage.setItem('bsp_editedSrc', canvas.toDataURL('image/png'));
-     → Untuk foto 20-30MB, canvas.toDataURL() menghasilkan string 60-80MB
-     → sessionStorage crash (limit 5-10MB)
-     → Halaman frame.php tidak bisa load gambar sama sekali
-   
-   SOLUSI:
-     1. Canvas → Blob (tidak masuk memori string raksasa)
-     2. Blob → upload ke api/save_edited_image.php
-     3. Simpan path server ke sessionStorage (hanya ~50 karakter)
-     4. frame.js load gambar dari path server (img.src = relativePath)
-   
-   CARA PAKAI:
-     Ganti seluruh fungsi goToFrame() di edit.js dengan fungsi di bawah ini.
-   ============================================================ */
-
-// ─── GO TO FRAME — FIX FILE BESAR ────────────────────────────
 async function goToFrame() {
   if (!state.trueOriginalImage) return;
   const btnNext = document.getElementById('btnNextFrame');
@@ -886,17 +682,6 @@ function renderToFullResCanvas() {
   let id = offCtx.getImageData(0, 0, srcW, srcH);
   id = applyPixelAdjustments(id);
   offCtx.putImageData(id, 0, 0);
-  if (state.blur > 0) applyBlur(offCtx, srcW, srcH, state.blur * 0.5);
-  if (state.vignette > 0) {
-    const grad = offCtx.createRadialGradient(
-      srcW/2,srcH/2, Math.min(srcW,srcH)*0.25,
-      srcW/2,srcH/2, Math.max(srcW,srcH)*0.85
-    );
-    grad.addColorStop(0,'rgba(0,0,0,0)');
-    grad.addColorStop(1,`rgba(0,0,0,${(state.vignette/100*0.9).toFixed(2)})`);
-    offCtx.fillStyle=grad; offCtx.fillRect(0,0,srcW,srcH);
-  }
-  applyFilterPreset(offCtx, srcW, srcH);
   const rotated = (state.rotation===90||state.rotation===270);
   const out = document.createElement('canvas');
   out.width  = rotated ? srcH : srcW;
@@ -913,70 +698,48 @@ function renderToFullResCanvas() {
   return out;
 }
 
-// ─── Helper: Canvas → Blob ────────────────────────────────────
 function canvasToBlob(canvasEl, mimeType) {
-  // Tentukan format output:
-  // - PNG kalau gambar asli memang PNG (untuk transparansi)
-  // - JPEG quality 0.92 untuk semua lainnya (jauh lebih kecil)
   const outputMime = mimeType === 'image/png' ? 'image/png' : 'image/jpeg';
   const quality    = outputMime === 'image/jpeg' ? 0.92 : undefined;
-
   return new Promise((resolve, reject) => {
     canvasEl.toBlob(
-      (blob) => {
-        if (blob) resolve(blob);
-        else reject(new Error('canvas.toBlob() gagal menghasilkan blob'));
-      },
-      outputMime,
-      quality
+      (blob) => { if (blob) resolve(blob); else reject(new Error('canvas.toBlob() gagal')); },
+      outputMime, quality
     );
   });
 }
 
-// ─── Helper: Upload Blob ke server ───────────────────────────
 async function uploadEditedBlob(blob, photoId, mimeType) {
   const format = mimeType === 'image/png' ? 'png' : 'jpeg';
   const ext    = format === 'png' ? 'png' : 'jpg';
-
   const fd = new FormData();
   fd.append('edited_image', blob, `edited.${ext}`);
   fd.append('format', format);
   if (photoId) fd.append('photo_id', photoId);
 
-  // Progress feedback (opsional, karena file bisa besar)
-  const uploadPromise = new Promise((resolve, reject) => {
+  return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open('POST', 'api/save_edited_image.php');
-
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) {
         const pct = Math.round((e.loaded / e.total) * 100);
         showToast(`Mengupload hasil edit… ${pct}%`);
       }
     };
-
     xhr.onload = () => {
       if (xhr.status >= 200 && xhr.status < 300) {
         try {
           const data = JSON.parse(xhr.responseText);
           if (data.success) resolve(data.path);
           else reject(new Error(data.error || 'Server error'));
-        } catch (e) {
-          reject(new Error('Response tidak valid dari server'));
-        }
-      } else {
-        reject(new Error(`HTTP ${xhr.status}`));
-      }
+        } catch (e) { reject(new Error('Response tidak valid dari server')); }
+      } else { reject(new Error(`HTTP ${xhr.status}`)); }
     };
-
     xhr.onerror = () => reject(new Error('Koneksi gagal'));
     xhr.ontimeout = () => reject(new Error('Upload timeout'));
-    xhr.timeout = 120000; // 2 menit untuk file besar
-
+    xhr.timeout = 120000;
     xhr.send(fd);
   });
-
-  return uploadPromise;
 }
 
 // ─── TOAST ────────────────────────────────────────────────
