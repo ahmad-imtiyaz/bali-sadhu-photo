@@ -186,13 +186,19 @@ function syncSheetSliders() {
   document.querySelectorAll('.sheet-slider').forEach(sl => {
     const key = sl.dataset.adj; if (!key) return;
     sl.value = state[key] || 0;
+    const isHeavy = ['hue', 'sharpness', 'tint', 'vibrance'].includes(key);
     sl.addEventListener('input', () => {
       const v = parseFloat(sl.value); state[key] = v;
       const mainSl = document.getElementById(`sl-${key}`); if (mainSl) mainSl.value = v;
       const valEl  = document.getElementById(`val-${key}`);  if (valEl)  valEl.textContent  = formatSliderVal(key, v);
       const sValEl = document.getElementById(`sval-${key}`); if (sValEl) sValEl.textContent = formatSliderVal(key, v);
-      scheduleRender();
-      clearTimeout(sl._t); sl._t = setTimeout(() => pushHistory(), 600);
+      if (isHeavy) {
+        clearTimeout(sl._t);
+        sl._t = setTimeout(() => scheduleRender(), 150);
+      } else {
+        scheduleRender();
+      }
+      clearTimeout(sl._th); sl._th = setTimeout(() => pushHistory(), 600);
     });
   });
 }
@@ -384,10 +390,18 @@ function showLoadingOverlay(show) {
 function setDetailText(id, text) { const el = document.getElementById(id); if (el) el.textContent = text; }
 
 // ─── RENDER ───────────────────────────────────────────────
+let _histTimer = null;
+
 function scheduleRender() {
   if (state.renderPending) return;
   state.renderPending = true;
-  requestAnimationFrame(() => { state.renderPending = false; renderCanvas(); drawHistogram(); });
+  requestAnimationFrame(() => {
+    state.renderPending = false;
+    renderCanvas();
+    // Histogram tidak perlu update real-time — delay 800ms setelah stop
+    clearTimeout(_histTimer);
+    _histTimer = setTimeout(() => drawHistogram(), 800);
+  });
 }
 
 function renderCanvas() {
@@ -611,15 +625,30 @@ async function resetToTrueOriginal() {
 
 // ─── SLIDERS ──────────────────────────────────────────────
 function setupSliders() {
-  let timer=null;
-  document.querySelectorAll('.slider[data-adj]').forEach(sl=>{
-    const key=sl.dataset.adj;
-    sl.addEventListener('input',()=>{
-      const v=parseFloat(sl.value); state[key]=v;
-      const valEl=document.getElementById(`val-${key}`); if(valEl)valEl.textContent=formatSliderVal(key,v);
-      const sheetSl=document.querySelector(`.sheet-slider[data-adj="${key}"]`); if(sheetSl)sheetSl.value=v;
-      const sValEl=document.getElementById(`sval-${key}`); if(sValEl)sValEl.textContent=formatSliderVal(key,v);
-      scheduleRender(); clearTimeout(timer); timer=setTimeout(()=>pushHistory(),600);
+  let timerLight = null;
+  let timerHeavy = null;
+
+  document.querySelectorAll('.slider[data-adj]').forEach(sl => {
+    const key = sl.dataset.adj;
+    const isHeavy = ['hue', 'sharpness', 'tint', 'vibrance'].includes(key);
+
+    sl.addEventListener('input', () => {
+      const v = parseFloat(sl.value); state[key] = v;
+      const valEl = document.getElementById(`val-${key}`); if (valEl) valEl.textContent = formatSliderVal(key, v);
+      const sheetSl = document.querySelector(`.sheet-slider[data-adj="${key}"]`); if (sheetSl) sheetSl.value = v;
+      const sValEl = document.getElementById(`sval-${key}`); if (sValEl) sValEl.textContent = formatSliderVal(key, v);
+
+      if (isHeavy) {
+        // Slider berat: tunda render sampai user berhenti geser 150ms
+        clearTimeout(timerHeavy);
+        timerHeavy = setTimeout(() => scheduleRender(), 150);
+      } else {
+        // Slider ringan: render langsung
+        scheduleRender();
+      }
+
+      clearTimeout(timerLight);
+      timerLight = setTimeout(() => pushHistory(), 600);
     });
   });
 }
