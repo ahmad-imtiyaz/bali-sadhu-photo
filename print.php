@@ -6,6 +6,7 @@
   <title>Print & Share — Bali Sadhu Photo</title>
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/print.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body>
 
@@ -251,6 +252,94 @@
       </div><!-- /bodyWa -->
     </div><!-- /cardWa -->
 
+    <div class="action-card" id="cardQR">
+  <div class="action-card-header">
+    <div class="action-icon qr-icon">
+      <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+        <rect x="2" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="11" y="2" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="2" y="11" width="7" height="7" rx="1" stroke="currentColor" stroke-width="1.5"/>
+        <rect x="4" y="4" width="3" height="3" fill="currentColor"/>
+        <rect x="13" y="4" width="3" height="3" fill="currentColor"/>
+        <rect x="4" y="13" width="3" height="3" fill="currentColor"/>
+        <path d="M11 11h2v2h-2zM13 13h2v2h-2zM15 11h2v2h-2zM11 15h2v2h-2zM15 15h2v2h-2z" fill="currentColor"/>
+      </svg>
+    </div>
+    <div class="action-info">
+      <div class="action-title">QR Code Download</div>
+      <div class="action-desc">Customer scan → download otomatis</div>
+    </div>
+    <svg class="chevron" width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M4 6l3 3 3-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+  </div>
+ 
+  <div class="action-body" id="bodyQR">
+ 
+    <!-- QR Canvas area -->
+    <div class="qr-stage">
+      <div id="qrCodeWrap" class="qr-canvas-wrap" style="display:none;"></div>
+      <div id="qrStatus" class="qr-status" style="display:none;">
+        <div class="spinner"></div>
+        <span>Membuat link…</span>
+      </div>
+      <div class="qr-placeholder" id="qrPlaceholder">
+        <svg width="48" height="48" viewBox="0 0 48 48" fill="none" style="opacity:.2">
+          <rect x="4" y="4" width="17" height="17" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="27" y="4" width="17" height="17" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="4" y="27" width="17" height="17" rx="2" stroke="currentColor" stroke-width="1.5"/>
+          <rect x="8" y="8" width="9" height="9" fill="currentColor" opacity=".5"/>
+          <rect x="31" y="8" width="9" height="9" fill="currentColor" opacity=".5"/>
+          <rect x="8" y="31" width="9" height="9" fill="currentColor" opacity=".5"/>
+          <path d="M27 27h5v5h-5zM32 32h5v5h-5zM38 27h5v5h-5zM27 38h5v5h-5zM38 38h5v5h-5z" fill="currentColor" opacity=".5"/>
+        </svg>
+        <span>Klik Generate untuk<br>buat QR Code</span>
+      </div>
+    </div>
+ 
+    <!-- Info row (muncul setelah generate) -->
+    <div class="qr-info-row" id="qrInfo" style="display:none;"></div>
+ 
+    <!-- Generate button -->
+    <button class="btn-action btn-qr-generate" id="btnGenerateQR">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <rect x="1" y="1" width="5" height="5" rx=".8" stroke="currentColor" stroke-width="1.2"/>
+        <rect x="8" y="1" width="5" height="5" rx=".8" stroke="currentColor" stroke-width="1.2"/>
+        <rect x="1" y="8" width="5" height="5" rx=".8" stroke="currentColor" stroke-width="1.2"/>
+        <rect x="2.5" y="2.5" width="2" height="2" fill="currentColor"/>
+        <rect x="9.5" y="2.5" width="2" height="2" fill="currentColor"/>
+        <rect x="2.5" y="9.5" width="2" height="2" fill="currentColor"/>
+        <path d="M8 8h1.5v1.5H8zM9.5 9.5H11V11H9.5zM11 8h1.5v1.5H11zM8 11h1.5v1.5H8zM11 11h1.5v1.5H11z" fill="currentColor"/>
+      </svg>
+      Generate QR Code
+    </button>
+ 
+    <!-- Action buttons (muncul setelah generate) -->
+    <div class="qr-action-btns" id="qrActions" style="display:none;">
+      <button class="btn-qr-secondary" id="btnCopyQRLink">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <rect x="4" y="1" width="8" height="8" rx="1.2" stroke="currentColor" stroke-width="1.2"/>
+          <path d="M9 4H2a1 1 0 00-1 1v6a1 1 0 001 1h7a1 1 0 001-1V9" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        Copy Link
+      </button>
+      <button class="btn-qr-secondary" id="btnPrintQR">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+          <path d="M3.5 5V2h6v3M1 5h11v6H1z" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+          <path d="M3.5 8.5h6M3.5 10.5h4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/>
+        </svg>
+        Print QR
+      </button>
+    </div>
+ 
+    <p class="qr-hint">
+      Tunjukkan QR ini ke customer atau print bersama foto.
+      Link aktif <strong>24 jam</strong>, maks <strong>5x download</strong>.
+    </p>
+ 
+  </div>
+</div><!-- /cardQR -->
+
   </div><!-- /actions-panel -->
 </div><!-- /print-layout -->
 
@@ -259,6 +348,7 @@
 
 <div id="toast"></div>
 <script src="js/print.js"></script>
+<script src="js/qr.js"></script>
 <script>
   // Navigation — tidak bisa pakai onclick karena CSP
   document.getElementById('btnBack')?.addEventListener('click', () => { window.location.href = 'frame.php'; });
