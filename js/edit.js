@@ -68,13 +68,24 @@ function imageToDataURL(img) {
   const c = tmp.getContext('2d');
   c.imageSmoothingEnabled = true; c.imageSmoothingQuality = 'high';
   c.drawImage(img, 0, 0);
-  return tmp.toDataURL('image/png');
+  return tmp.toDataURL('image/jpeg', 0.88); // ← JPEG, bukan PNG
 }
+
+const MAX_HISTORY = 20; // cukup untuk undo/redo wajar
 
 function pushHistory(includeImage = false) {
   if (history._saving) return;
   history.stack.splice(history.pointer + 1);
   history.stack.push(snapshotState(includeImage));
+  
+  // Buang history paling lama kalau sudah melebihi batas
+  if (history.stack.length > MAX_HISTORY) {
+    history.stack.shift();
+  } else {
+    history.pointer = history.stack.length - 1;
+  }
+  
+  // pointer selalu di ujung
   history.pointer = history.stack.length - 1;
   updateUndoRedoBtns();
 }
